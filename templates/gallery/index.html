@@ -1,0 +1,43 @@
+{% extends "gallery/base_index.html" %}
+
+  {% block random_thumbs_block %}
+  {% for oe in random %}
+     <a href="{{ oe.perm_url }}"><img src="{{ oe.thumb_url }}"></img></a>
+  {% endfor %}
+  {% endblock %}
+
+
+  {% block tag_cloud_top %}
+  {% for tag in tags %}
+    <a style="font-size: {{ tag.size }}em; text-decoration: none;"
+       href="{{ tag.url }}">{{ tag.name }}</a>
+  {% endfor %}
+  {% endblock %}
+
+<!--<a style="font-size: 0.800000em; text-decoration: none;" href="/original/index.py/tags/Famille+Noyer">Famille Noyer</a>
+<a style="font-size: 0.800000em; text-decoration: none;" href="/original/index.py/tags/Fred">Fred</a>
+<a style="font-size: 0.800000em; text-decoration: none;" href="/original/index.py/tags/Fun">Fun</a>
+<a style="font-size: 0.800000em; text-decoration: none;" href="/original/index.py/tags/Gen%C3%A8ve">Genève</a>
+-->
+
+  {% block recent_thumbs_block %}
+  {% for oe in recent %}
+     <a href="{{ oe.perm_url }}"><img src="{{ oe.thumb_url }}"></img></a>
+  {% endfor %}  
+  {% endblock %}
+
+
+  {% block tag_cloud_bottom %}
+  
+  {% endblock %}
+
+  {% block recent_tags_cloud %}
+     {% if recent_tags %}
+     recent photos in 
+     {% for tag in recent_tags %}
+     <a style="text-decoration: none" 
+	href="{{ tag.url }}">{{ tag.name }}</a>
+     {% endfor %}
+     {% endif %}
+  
+  {% endblock %}

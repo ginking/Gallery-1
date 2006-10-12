@@ -1,0 +1,88 @@
+{% extends "gallery/base_tag_photo.html" %}
+
+{% block in_body %}
+    <div>
+       <div id="image" style="height:{{ photo.height }}px;">
+	 <img border=0 id="preview" src="{{ exported.normal_url }}" 
+	      height="{{ photo.height }}px;" width="{{ photo.width }}"/>
+      
+	 {% if previous %}
+         <div class="prevthumb">
+	   <a href="{{ previous.url }}">
+	     <img alt="Previous" src="{{ previous.get_exported.thumb_url }}"/>
+	     <br/>
+	     Previous
+	   </a>
+	 </div>
+	 {% endif %}
+
+
+	 {% if next %}
+	 <div class="nextthumb">
+	   <a href="{{ next.url }}">
+	     <img alt="Next" src="{{ next.get_exported.thumb_url }}"/>
+	     <br/>
+	     Next
+	   </a>
+	 </div>
+	 {% endif %}
+       </div>
+
+	 <h2>{{ photo.description }}</h2>
+
+
+	 <div id="tagsforphoto" style="text-align: center; margin-top:24px;">
+	   Tags:
+	   {% for tag in photo.tags.all %}
+	   <a href="{{tag.url}}">{{tag.name}}</a>
+	   {% endfor %}
+	 </div>
+
+	 <div class="exif">
+	   {% for info in photo.get_exif_infos %}
+	     <span title="{{ info.title }}">{{ info.value }}</span>
+	   {% endfor %}
+	 </div>
+
+	 <div id="mqhq">
+	   {% if exported.mq_url %}
+  	   <a href="{{ exported.mq_url }}">MQ</a>
+	   {% endif %}
+	   {% if exported.hq_url %}
+	   <a href="{{ exported.hq_url }}">HQ</a>
+	   {% endif %}
+	 </div>
+
+	 {% for comment in photo.get_comments %}
+	    <div class="comment" id="comment{{ comment.id }}">
+	      <span class="author">{{comment.author}}</span>
+	      <span class="website">{{comment.website}}</span>
+	      <span class="data">
+		{{ comment.comment }}
+	      </span>
+	    </div>
+	 {% endfor %}
+
+	 {% if form.has_errors %}
+	 <h2>Please correct the following error{{ form.error_dict|pluralize }}:</h2>
+	 {% endif %}
+
+	 <form method="post" action=".">
+	   <p>
+	     <label for="id_author">Name:</label> {{ form.author }}
+	     {% if form.author.errors %}*** {{ form.author.errors|join:", " }}{% endif %}
+	   </p>
+
+	   <p>
+	     <label for="id_website">Website:</label> {{ form.website }}
+	     {% if form.website.errors %}*** {{ form.website.errors|join:", " }}{% endif %}
+	   </p>
+	   <p>
+	     <label for="id_comment">Comment:</label> {{ form.comment }}
+	     {% if form.comment.errors %}*** {{ form.comment.errors|join:", " }}{% endif %}
+	   </p>
+	   <input type="submit" />
+	 </form>
+
+    </div>
+{% endblock %}

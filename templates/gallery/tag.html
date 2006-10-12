@@ -1,0 +1,31 @@
+{% extends "gallery/base_tag_photo.html" %}
+
+{% block in_body %}
+
+
+{% if error_message %}<p><strong>{{ error_message }}</strong></p>{% endif %}
+
+  {% for photo in photos %}
+     <a href="{{ photo.url }}/{{ tag.name|slugify }}"><img src="{{ photo.get_exported.thumb_url }}"></img></a>
+  {% endfor %}  
+
+  <br/>
+  {% ifnotequal nb_pages 1 %}
+   {% ifnotequal page 1 %}
+     <a href="{{ tag.url }}/{{ page|add:"-1" }}">Previous</a>
+   {% endifnotequal %}
+   {% for page_nb in total_pages %}
+     {% ifnotequal forloop.counter page %}
+        <a href="{{ tag.url }}/{{ forloop.counter }}">{{forloop.counter}}
+        </a>
+     {% else %}
+        {{forloop.counter}}
+     {% endifnotequal %}
+        &nbsp;
+   {% endfor %}
+   {% ifnotequal page nb_pages %}
+      <a href="{{ tag.url}}/{{ page|add:"1" }}">Next</a>
+   {% endifnotequal %}
+  {% endifnotequal %}
+
+{% endblock %}

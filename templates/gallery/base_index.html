@@ -1,0 +1,24 @@
+{% extends "gallery/base.html" %}
+
+
+
+{% block body %}
+  <div style="text-align: center;"> 
+    <div id="randomthumbs">
+      {% block random_thumbs_block %}Random thumbs{% endblock %}
+    </div>
+    <div id="tagcloud">
+      {% block tag_cloud_top %}Tag cloud{% endblock %}
+    </div>
+    
+    <div id="randomthumbs">
+      {% block recent_thumbs_block %}Tag cloud{% endblock %}
+    </div>
+    <p id="recenttags">
+      {% block recent_tags_cloud %}Recent tags{% endblock %}
+    </p>
+  </div>
+{% endblock %}
+
+
+  {% block random_thumbs %}Foo{% endblock %}

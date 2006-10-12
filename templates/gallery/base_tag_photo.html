@@ -1,0 +1,23 @@
+{% extends "gallery/base.html" %}
+
+{% block body %}
+  <h1 class="title"><a href="/gallery">Photo Gallery:</a></h1>
+  
+  <div class="navigation"><a href="/gallery/">Photo Gallery Index</a>
+    {% if tag.url %}
+
+    <!-- TODO: display horizontal tag hierarchy here -->
+
+    <span>&gt;
+      <a
+      href="{{ tag.url }}">{{ tag.name }}: {{ tag.get_description }}</a></span>
+    {% endif %}
+    {% if photo.id %}
+    <span>&gt;
+      Photo {{ photo.id }}</span>
+    {% endif %}
+  </div>
+
+{% block in_body %}
+{% endblock %}
+{% endblock %}
