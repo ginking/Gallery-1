@@ -216,6 +216,16 @@ class Tag(models.Model):
         return s
 
     @classmethod
+    def build_set(cls, tag_combination):
+        tag_names = tag_combination.split('+')
+        tags = [ t for t in list(Tag.objects.all())
+                 if slugify(t.name) in tag_names ]
+        final_set = []
+        for tag in tags:
+            final_set.extend(tag.photo_set.all())
+        return final_set
+
+    @classmethod
     def with_name(cls, slugified):
         tags = [ t for t in list(Tag.objects.all())
                  if slugify(t.name) == slugified ]

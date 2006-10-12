@@ -69,25 +69,34 @@ def photos_in_tag(request, tag_name, photo_id=None, page=None):
     if photo_id:
         return photo(request, photo_id, tag_name)
     else:
-        # display all photos of the tag
-        tag = Tag.with_name(tag_name)
-        if not tag:
-            raise Http404
+        if tag_name.find('+') > -1:
+            # combination of tags
+            photo_set = Tag.build_set(tag_name)
+            tag = None
+        else:
+            # display all photos of the tag
+            tag = Tag.with_name(tag_name)
+            if not tag:
+                raise Http404
+            else:
+                photo_set = tag.photo_set.all()
 
         step = settings.GALLERY_SETTINGS.get('items_by_page')
-        total = tag.photo_set.count()
-        photos = tag.photo_set.all()
         if page == 1:
             start = 0
         else:
-            start = (page-1)* step 
+            start = (page-1)* step
+            
+        total = len(photo_set)
         nb_pages, rest = divmod(total, step)
         end = (page * step) 
         if rest:
             nb_pages += 1
-        photos = tag.photo_set.all()[start:end]
+            
+        photos = photo_set[start:end]
         total_pages = range(nb_pages)
-        params = {'tag': tag, 'page': page,
+        slug = '/gallery/tag/%s' % tag_name
+        params = {'tag': tag, 'page': page, 'slug': slug, 'tag_name': tag_name,
                   'nb_pages': nb_pages, 'total_pages': total_pages,
                   'photos': photos}
         return render_to_response('gallery/tag.html', params)

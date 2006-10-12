@@ -11,10 +11,13 @@ class LatestPhotos(Feed):
         #items = [ {'title': p.title, 'description': '<img src="%s"'
         return []
 
-class LatestPhotosByTag(Feed):
-    title = "Photos by tag"
+class LatestTags(Feed):
+    title = "Tags recently updated"
     link = "/gallery/"
-    description = "Foo"
+    description = "Tags recently updated"
 
     def items(self):
         return Tag.get_recent_tags_cloud()
+
+class LatestPhotosByTag(Feed):
+    pass
