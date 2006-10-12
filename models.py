@@ -39,6 +39,12 @@ class OriginalExport(models.Model):
     def __str__(self):
         return self.normal_relpath
 
+    def as_dict(self):
+        return {'thumb_url': self.thumb_url(),
+                'normal_url': self.normal_url(),
+                'hq_url': self.hq_url(),
+                'mq_url': self.mq_url()}
+
     @classmethod
     def get_random(cls, number, since=None):
         if not since:
@@ -112,6 +118,13 @@ class Photo(models.Model):
             desc = self.name
         return desc
 
+    def as_dict(self):
+        return {'id': self.id, 'time': self.time,
+                'exported': self.get_exported().as_dict(),
+                'description': self.description,
+                'exif': [i for i in self.get_exif_infos() if i != ' | '],
+                'tags': [tag.name for tag in self.tags.all()]}
+
     def get_comments(self):
         comments = Comment.objects.filter(photo_id=self.id)
         if not comments:
@@ -127,6 +140,8 @@ class Photo(models.Model):
                 extra = '/' + extra
             url += extra
         return url
+
+    get_absolute_url = url
 
     def in_tag_url(self, tag_name):
         return '%s/photo/%s/%s' % (G_URL, self.id, slugify(tag_name))
@@ -214,6 +229,12 @@ class Tag(models.Model):
         else:
             s = self.name
         return s
+
+    def as_dict(self):
+        return {'id': self.id, 'name': self.name,
+                'description': self.get_description(),
+                'photo_count': self.photo_set.count()
+                }
 
     @classmethod
     def build_set(cls, tag_combination):
@@ -307,7 +328,8 @@ class Comment(models.Model):
     photo_id = models.IntegerField(null=True, blank=True)
     comment = models.TextField()
     author = models.CharField(maxlength=60)
-    website = models.CharField(maxlength=128)
+    website = models.CharField(maxlength=128, blank=True)
+    time = models.DateTimeField(null=True, auto_now_add=True)
     
     class Admin:
         pass
@@ -315,3 +337,11 @@ class Comment(models.Model):
     def __str__(self):
         return "%s on photo %s: %s" % (self.author, self.photo_id,
                                        self.comment[:50])
+
+    def url(self):
+        return '%s/comment/%s' % (G_URL, self.id)
+
+    get_absolute_url = url
+
+    def photo(self):
+        return Photo.objects.get(id=self.photo_id)

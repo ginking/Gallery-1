@@ -1,4 +1,3 @@
-# Create your views here.
 from django.http import Http404, HttpResponse, HttpResponseRedirect
 from django import forms
 
@@ -100,3 +99,11 @@ def photos_in_tag(request, tag_name, photo_id=None, page=None):
                   'nb_pages': nb_pages, 'total_pages': total_pages,
                   'photos': photos}
         return render_to_response('gallery/tag.html', params)
+
+def comment(request, comment_id):
+    c = get_object_or_404(Comment, pk=comment_id)
+    photo = c.photo()
+    exported = photo.get_exported()
+    return render_to_response('gallery/comment.html', {'comment': c,
+                                                       'exported': exported,
+                                                       'photo': photo})

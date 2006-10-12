@@ -55,6 +55,7 @@
 
 	 {% for comment in photo.get_comments %}
 	    <div class="comment" id="comment{{ comment.id }}">
+	      <a href="{{comment.url}}">#</a>
 	      <span class="author">{{comment.author}}</span>
 	      <span class="website">{{comment.website}}</span>
 	      <span class="data">

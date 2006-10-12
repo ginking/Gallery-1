@@ -1,0 +1,23 @@
+{% extends "gallery/base_tag_photo.html" %}
+
+{% block in_body %}
+
+<div id="image" style="height:{{ photo.height }}px;">
+  <a href="{{photo.url}}">
+    <img border=0 id="preview" src="{{ exported.normal_url }}" 
+	 height="{{ photo.height }}px;" width="{{ photo.width }}"/>
+  </a>
+</div>
+
+<h2>{{ photo.description }}</h2>
+
+
+<div class="comment" id="comment{{ comment.id }}">
+  <span class="author">{{comment.author}}</span>
+  <span class="website">{{comment.website}}</span>
+  <span class="data">
+    {{ comment.comment }}
+  </span>
+</div>
+
+{% endblock %}
