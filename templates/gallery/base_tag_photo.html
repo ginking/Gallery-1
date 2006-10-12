@@ -12,8 +12,10 @@
 	{{ tag.name }}: {{ tag.get_description }}
       </a></span>
     {% else %}
-      <!-- TODO: add form submit -->
-      <input type="text" value="{{ tag_name }}" />
+      {% if tag_name %}
+        <!-- TODO: add form submit -->
+	<input type="text" value="{{ tag_name }}" />
+      {% endif %}
     {% endif %}
 
     {% if photo.id %}

@@ -1,6 +1,6 @@
 from django.conf.urls.defaults import *
 from django.conf import settings
-from gallery.feeds import LatestPhotos, LatestPhotosByTag
+from gallery.feeds import LatestPhotos, LatestTags
 
 feeds = {
     'photos': LatestPhotos,
