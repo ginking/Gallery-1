@@ -1,5 +1,7 @@
 {% extends "gallery/base_tag_photo.html" %}
 
+{% block title %}Photo {{ photo.id }}{% endblock %}
+
 {% block in_body %}
     <div>
        <div id="image" style="height:{{ photo.height }}px;">
@@ -32,6 +34,9 @@
 
 
 	 <div id="tagsforphoto" style="text-align: center; margin-top:24px;">
+	   {% ifnotequal photo.get_hits 1 %}
+	   {{photo.get_hits}} hits.
+	   {% endifnotequal %}
 	   Tags:
 	   {% for tag in photo.tags.all %}
 	   <a href="{{tag.url}}">{{tag.name}}</a>
@@ -40,6 +45,9 @@
 
 	 <div class="exif">
 	   {% for info in photo.get_exif_infos %}
+	     {% ifequal divmod(forloop.counter0) 0 %}
+	       |
+	     {% endifequal %}
 	     <span title="{{ info.title }}">{{ info.value }}</span>
 	   {% endfor %}
 	 </div>
@@ -54,16 +62,23 @@
 	 </div>
 
 	 {% for comment in photo.get_comments %}
-	    <div class="comment" id="comment{{ comment.id }}">
+	    <div class="comment" id="c{{ comment.id }}">
 	      <a href="{{comment.url}}">#</a>
-	      <span class="author">{{comment.author}}</span>
-	      <span class="website">{{comment.website}}</span>
+	      {{comment.submit_date|timesince}} ago
+	      <span class="author">
+		{% if comment.website %}
+		  <a href="{{comment.website}}">{{comment.author}}</a>
+		{% else %}
+		  {{comment.author}}
+		{% endif %}
+	      </span> said: 
 	      <span class="data">
 		{{ comment.comment }}
 	      </span>
 	    </div>
 	 {% endfor %}
 
+	 <div class="form">
 	 {% if form.has_errors %}
 	 <h2>Please correct the following error{{ form.error_dict|pluralize }}:</h2>
 	 {% endif %}
@@ -84,6 +99,7 @@
 	   </p>
 	   <input type="submit" />
 	 </form>
+	 </div>
 
     </div>
 {% endblock %}

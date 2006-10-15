@@ -9,7 +9,10 @@
     <!-- TODO: display horizontal tag hierarchy here -->
 
       <span>&gt;<a href="{{ tag.url }}">
-	{{ tag.name }}: {{ tag.get_description }}
+	{{ tag.name }}
+	{% if tag.get_description %}
+	: {{ tag.get_description }}
+	{% endif %}
       </a></span>
     {% else %}
       {% if tag_name %}

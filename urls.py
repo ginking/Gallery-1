@@ -20,7 +20,7 @@ urls = [
     (r'^photo/(?P<photo_id>\d+)/(?P<tag_name>[\w\-]*)/$',
      'gallery.views.photos_in_tag'),
     (r'^photo/(?P<photo_id>\d+)/$', 'gallery.views.photo'),
-    (r'^comment/(?P<comment_id>\d+)/$', 'gallery.views.comment'),
+    #(r'^comment/(?P<comment_id>\d+)/$', 'gallery.views.comment'),
 ]
 
 media_path = settings.GALLERY_SETTINGS.get('media_path')

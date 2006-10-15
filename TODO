@@ -1,7 +1,12 @@
 
-- finish feeds
-- REST or XML-RPC api?
 - search engine?
 - comment spam protection. akismet?
 - installation instructions :)
 - rst formatting support in comments
+
+- design:
+
+  * mini-thumbnails navigation bar
+  * where to put feed buttons?
+  * comment form ;)
+  

@@ -4,7 +4,7 @@ from django import forms
 from django.shortcuts import render_to_response, get_object_or_404
 from mysite.gallery.models import OriginalExport, Photo, Tag, Comment
 from django.conf import settings
-import time
+import datetime, time
 
 def index(request):
     random = OriginalExport.get_random(6)
@@ -30,6 +30,10 @@ def photo(request, photo_id, in_tag_name=None):
             # No errors. This means we can save the data!
             manipulator.do_html2python(new_data)
             new_data['photo_id'] = photo_id
+            today = datetime.datetime.today()
+            new_data['submit_date_date'] = today.date()
+            new_data['submit_date_time'] = today.time()
+            
             new_comment = manipulator.save(new_data)
             
             # Redirect to the object's "edit" page. Always use a redirect
@@ -52,6 +56,7 @@ def photo(request, photo_id, in_tag_name=None):
         tag = None
     previous = p.get_sibling_photo('previous', tag)
     next = p.get_sibling_photo('next', tag)
+    p.increment_hit()
     return render_to_response('gallery/detail.html', {'tag': tag,
                                                       'photo': p,
                                                       'previous': previous,
@@ -99,11 +104,3 @@ def photos_in_tag(request, tag_name, photo_id=None, page=None):
                   'nb_pages': nb_pages, 'total_pages': total_pages,
                   'photos': photos}
         return render_to_response('gallery/tag.html', params)
-
-def comment(request, comment_id):
-    c = get_object_or_404(Comment, pk=comment_id)
-    photo = c.photo()
-    exported = photo.get_exported()
-    return render_to_response('gallery/comment.html', {'comment': c,
-                                                       'exported': exported,
-                                                       'photo': photo})

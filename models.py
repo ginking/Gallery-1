@@ -4,12 +4,14 @@
 from django.db import models, connection, connections
 from django.conf import settings
 from django.template.defaultfilters import slugify
+from django.contrib.sites.models import Site
 
 import time
 import os, Image
 import EXIF
 
 G_URL=settings.GALLERY_SETTINGS['rel_url']
+SITE=Site.objects.get_current()
 
 ## class Import(models.Model):
 ##     id = models.IntegerField(primary_key=True)
@@ -31,7 +33,7 @@ class OriginalExport(models.Model):
     mq_relpath = models.TextField() # This field type is a guess.
     hq_relpath = models.TextField() # This field type is a guess.
 
-    media_url = '%s/media/' % G_URL
+    media_url = 'http://%s%s/media/' % (SITE, G_URL)
     
     class Meta:
         db_table = 'original_exports'
@@ -120,9 +122,10 @@ class Photo(models.Model):
 
     def as_dict(self):
         return {'id': self.id, 'time': self.time,
-                'exported': self.get_exported().as_dict(),
+                'pictures': self.get_exported().as_dict(),
                 'description': self.description,
                 'exif': [i for i in self.get_exif_infos() if i != ' | '],
+                'comments': [ c.as_dict() for c in self.get_comments()],
                 'tags': [tag.name for tag in self.tags.all()]}
 
     def get_comments(self):
@@ -147,8 +150,28 @@ class Photo(models.Model):
         return '%s/photo/%s/%s' % (G_URL, self.id, slugify(tag_name))
 
     def get_exported(self):
-        return OriginalExport.objects.get(id=self.id)
+        if not hasattr(self, '_exported'):
+            self._exported = OriginalExport.objects.get(id=self.id)
+        return self._exported
 
+    def get_hits(self):
+        try:
+            addon = PhotoAddon.objects.get(photo_id=self.id)
+        except:
+            hits = 0
+        else:
+            hits = addon.hits
+        return hits
+
+    def increment_hit(self):
+        try:
+            addon = PhotoAddon.objects.get(photo_id=self.id)
+        except:
+            addon = PhotoAddon(photo_id=self.id, hits=1)
+        else:
+            addon.hits += 1
+        addon.save()
+        
     def get_sibling_photo(self, direction, tag):
         photo = None
         if tag:
@@ -202,15 +225,15 @@ class Photo(models.Model):
                      ('EXIF ExposureTime', 'Time of Exposure'),
                      ('EXIF Flash', 'Flash')):
             if k in data:
-                if len(infos) > 1:
-                    infos.append(' | ')
+##                 if len(infos) > 1:
+##                     infos.append(' | ')
                 infos.append({'title': v, 'value': str(data[k])})
 
         return infos
     
 class Tag(models.Model):
     id = models.IntegerField(primary_key=True)
-    name = models.TextField(unique=True, blank=True)
+    name = models.CharField(unique=True, blank=True, maxlength=255)
     category_id = models.IntegerField(null=True, blank=True)
     is_category = models.BooleanField(null=True, blank=True)
     sort_priority = models.IntegerField(null=True, blank=True)
@@ -220,8 +243,17 @@ class Tag(models.Model):
         db_table = 'tags'
 
     class Admin:
-        pass
-
+        fields = (
+            (None, {
+            'fields': ('id', 'name',)
+            }),
+            #('Advanced options', {
+            #'classes': 'collapse',
+            #'fields' : ('enable_comments', 'registration_required', 'template_name')
+            #}),
+            )
+        list_display = ('name', 'get_description',)
+        
     def __str__(self):
         desc = self.get_description()
         if desc:
@@ -233,7 +265,7 @@ class Tag(models.Model):
     def as_dict(self):
         return {'id': self.id, 'name': self.name,
                 'description': self.get_description(),
-                'photo_count': self.photo_set.count()
+                #'photo_count': self.photo_set.count()
                 }
 
     @classmethod
@@ -299,7 +331,14 @@ class Tag(models.Model):
         date = int(time.time() - t)
         tags = Tag.objects.filter(photo__time__gt=date).distinct()
         return tags
-    
+
+
+    def get_recent_photos(self):
+        t = settings.GALLERY_SETTINGS['recent_photos_time']
+        date = int(time.time() - t)
+        photos = self.photo_set.filter(time__gt=date).distinct()
+        return photos
+
     def url(self):
         return '%s/tag/%s' % (G_URL, slugify(self.name))
 
@@ -307,39 +346,67 @@ class Tag(models.Model):
 
     def get_description(self):
         try:
-            description = TagDescription.objects.get(tag_id=self.id)
+            addon = TagAddon.objects.get(tag_id=self.id)
         except:
-            description = None
-        if not description:
             description = ''
         else:
-            description = description.description
+            description = addon.description
         return description
 
-class TagDescription(models.Model):
+    def set_description(self, desc):
+        try:
+            addon = TagAddon.objects.get(tag_id=self.id)
+        except:
+            addon = TagAddon(tag_id=self.id, description=desc)
+        else:
+            addon.description = desc
+        addon.save()
+
+    def get_tags(self):
+        if not self.is_category:
+            return []
+        return Tag.objects.filter(category_id=self.id)
+    
+
+def get_root_categories():
+    return Tag.objects.filter(is_category=1, category_id=0)
+
+
+class TagAddon(models.Model):
     tag_id = models.IntegerField()
+    #tag = models.ForeignKey('Tag')
     description = models.CharField(maxlength=350)
 
     class Admin:
         pass
 
+class PhotoAddon(models.Model):
+    photo_id = models.IntegerField(null=True, blank=True)
+    hits = models.IntegerField(default=0)
 
 class Comment(models.Model):
     photo_id = models.IntegerField(null=True, blank=True)
     comment = models.TextField()
     author = models.CharField(maxlength=60)
     website = models.CharField(maxlength=128, blank=True)
-    time = models.DateTimeField(null=True, auto_now_add=True)
+    submit_date = models.DateTimeField(blank=True)
     
     class Admin:
-        pass
+        list_display = ('submit_date', 'photo',)
+
+    class Meta:
+        ordering = ('-submit_date',)
     
     def __str__(self):
-        return "%s on photo %s: %s" % (self.author, self.photo_id,
-                                       self.comment[:50])
+        return "%s on photo %s: %s..." % (self.author, self.photo_id,
+                                       self.comment[:100])
+
+    def as_dict(self):
+        return {'comment': self.comment, 'author': self.author,
+                'website': self.website, 'submit_date': self.submit_date}
 
     def url(self):
-        return '%s/comment/%s' % (G_URL, self.id)
+        return '%s#c%s' % (self.photo().url(), self.id)
 
     get_absolute_url = url
 

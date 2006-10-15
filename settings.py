@@ -2,7 +2,8 @@
 
 GALLERY_SETTINGS={'items_by_page': 20,
                   'media_path': '/home/phil/scaled',
-                  'static_path': '/home/phil/inc',
+                  'author': 'Philippe Normand',
+                  'static_path': '/home/phil/devel/gallery/static',
                   'recent_photos_time': 60*60*24*14,
                   'rel_url': '/gallery'}
 

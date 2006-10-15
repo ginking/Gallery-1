@@ -1,16 +1,14 @@
 from django.contrib.syndication.feeds import Feed
-from gallery.models import Tag, OriginalExport, Comment
+from gallery.models import Tag, Photo, Comment
 from django.core.exceptions import ObjectDoesNotExist
 
 class Photos(Feed):
-    title = "Chicagocrime.org site news"
-    link = "/sitenews/"
-    description = "Updates on changes and additions to chicagocrime.org."
+    title = "Photos recently added"
+    link = "/gallery/"
+    description = title
 
     def items(self):
-        photos = OriginalExport.get_random(15)
-        #items = [ {'title': p.title, 'description': '<img src="%s"'
-        return []
+        return Photo.objects.order_by('-time')[:15]
 
 class Tags(Feed):
     title = "Tags recently updated"
@@ -45,6 +43,4 @@ class Comments(Feed):
     description = "Comments recently added"
 
     def items(self):
-        return Comment.objects.order_by('-time')[:15]
-
-    
+        return Comment.objects.order_by('-submit_date')[:15]
