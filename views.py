@@ -2,7 +2,7 @@ from django.http import Http404, HttpResponse, HttpResponseRedirect
 from django import forms
 
 from django.shortcuts import render_to_response, get_object_or_404
-from mysite.gallery.models import OriginalExport, Photo, Tag, Comment
+from gallery.models import OriginalExport, Photo, Tag, Comment
 from django.conf import settings
 import datetime, time
 
