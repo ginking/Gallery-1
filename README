@@ -1,0 +1,82 @@
+
+How to install this ?
+=====================
+
+1. Checkout multiple-db-support Django branch:
+
+   ::
+
+     $ svn co http://code.djangoproject.com/svn/django/branches/multiple-db-support Django
+
+2. Install it :) I preferred the setup.py develop way though...
+
+   ::
+
+     $ cd Django
+     $ python setup.py install
+
+3. Start a new project and configure it:
+
+   ::
+
+     $ django-admin.py startproject mysite
+     $ cd mysite
+     $ # edit settings.py and configure the DATABASE. advice: use a
+         sqlite db :)
+     $ python manage.py syncdb
+
+4. Activate the admin interface, see
+   http://www.djangoproject.com/documentation/tutorial2/ and configure
+   your site'url
+
+
+5. Now you have a Django site, you can install the Gallery application
+
+   ::
+
+     $ cd ..
+     $ mv gallery mysite/
+     $ cd mysite
+     $ # add 'mysite.gallery' to setting.py INSTALLED_APPS
+     $ # configure the gallery by editing gallery/settings.py,
+     $ # especially the db option.
+
+   The multiple-db-support Django branch seems to have difficulties to
+   automagically install the app, so you'd need to manually do it :(
+   
+   ::
+
+     $ python manage.py sql gallery
+
+   This outputs a bunch of SQL commands, you'll need to execute them
+   in your site's sqlite db, but only the ones for <default>
+   connection:
+
+   ::
+
+     $ sqlite3 site.db
+     sqlite> # create table gallery_tagaddon gallery_photoaddon and
+               gallery_comment
+
+6. Now you need to bind the gallery's urls to your django site:
+
+   ::
+   
+     $ # edit site/urls.py and add this:
+
+         (r'^gallery/', include('mysite.gallery.urls')),
+
+       # in urlpatterns variable
+
+   This will bind all urls starting with gallery/ to the gallery
+   application.
+
+
+7. Start the testing server
+
+   ::
+
+     $ python manage.py runserver
+
+
+8. Enjoy :)

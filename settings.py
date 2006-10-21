@@ -9,6 +9,8 @@ GALLERY_SETTINGS={'items_by_page': 20,
 
 db = { 'DATABASE_ENGINE': 'sqlite3',
        'DATABASE_NAME': '/home/phil/scaled/db/photos.db',
+
+       # Don't change this, please.
        'MODELS': ['gallery.%s' % m for m in ('Tag', 'Photo',
                                              'OriginalExport')]
        }
