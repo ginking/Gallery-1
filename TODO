@@ -1,8 +1,8 @@
 
 - search engine?
 - comment spam protection. akismet?
-- installation instructions :)
 - rst formatting support in comments
+- make use of django's cache
 
 - design:
 

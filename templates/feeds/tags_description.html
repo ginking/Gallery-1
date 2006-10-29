@@ -6,7 +6,7 @@
 . Some recent photos:
 {% for photo in obj.get_recent_photos|slice:":5" %}
 <a href="http://{{site.domain}}{{obj.url}}">
-  <img src="http://{{ site.domain }}{{ photo.get_exported.thumb_url }}"/>
+  <img src="{{ photo.get_exported.thumb_url }}"/>
 </a>
 <br/>
 {% endfor %}
