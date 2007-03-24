@@ -66,10 +66,6 @@ def photo(request, photo_id, in_tag_name=None):
                                                       })
 
 def photos_in_tag(request, tag_name, photo_id=None, page=None):
-    if not page:
-        page = 1
-    else:
-        page = int(page)
     if photo_id:
         return photo(request, photo_id, tag_name)
     else:
@@ -84,6 +80,14 @@ def photos_in_tag(request, tag_name, photo_id=None, page=None):
                 raise Http404
             else:
                 photo_set = tag.photo_set.all()
+
+        if len(photo_set) == 0:
+            return category(request, tag)
+
+        if not page:
+            page = 1
+        else:
+            page = int(page)
 
         step = settings.GALLERY_SETTINGS.get('items_by_page')
         if page == 1:
@@ -104,3 +108,11 @@ def photos_in_tag(request, tag_name, photo_id=None, page=None):
                   'nb_pages': nb_pages, 'total_pages': total_pages,
                   'photos': photos}
         return render_to_response('gallery/tag.html', params)
+
+def category(request, tag):
+
+    params = {'tags': tag.get_sub_tags_cloud(),
+              'tag': tag,
+              'random': OriginalExport.get_random(10, category_id=tag.id)
+              }
+    return render_to_response('gallery/category.html', params)

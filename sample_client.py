@@ -1,18 +1,18 @@
 import sys
 import xmlrpclib
 
-rpc_srv = xmlrpclib.ServerProxy("http://192.168.0.118:8000/gallery/xmlrpc/",
+rpc_srv = xmlrpclib.ServerProxy(sys.argv[1],
                                 #verbose=1
                                 )
 
 
 
-tags = rpc_srv.get_tags()
-print tags
+#tags = rpc_srv.get_tags()
+#print tags
 
 print '-' * 80
 
-photos = rpc_srv.get_photos_for_tag(18)
+photos = rpc_srv.get_photos_for_tag(25)
 print photos
 
 lieux = rpc_srv.get_sub_tags(4)

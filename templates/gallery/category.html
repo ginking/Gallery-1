@@ -1,0 +1,22 @@
+{% extends "gallery/base_index.html" %}
+
+{% block title %}
+Category: {{tag.name}}{% endblock %}
+
+  {% block random_thumbs_block %}
+  {% for oe in random %}
+     <a href="{{ oe.perm_url }}"><img src="{{ oe.thumb_url }}"></img></a>
+  {% endfor %}
+  {% endblock %}
+
+  {% block tag_cloud_top %}
+  {% for tag in tags %}
+    <a style="font-size: {{ tag.size }}em; text-decoration: none;"
+       href="{{ tag.url }}">{{ tag.name }}</a>
+  {% endfor %}
+  {% endblock %}
+
+
+
+      {% block recent_thumbs_block %}{% endblock %}
+      {% block recent_tags_cloud %}{% endblock %}

@@ -48,16 +48,23 @@ class OriginalExport(models.Model):
                 'mq_url': self.mq_url()}
 
     @classmethod
-    def get_random(cls, number, since=None):
-        if not since:
+    def get_random(cls, number, since=None, category_id=None):
+        if not since and not category_id:
             objects = cls.objects.order_by('?')[:number]
-        else:
+        elif since:
             sql = 'select oe.id from original_exports oe, photos p where oe.id=p.id and p.time > %r order by random() limit %r'
             
             connection = OriginalExport.objects.db.connection
             cursor = connection.cursor()
             cursor.execute(sql % (float(since), int(number),))
             objects = [cls.objects.get(id=id) for [id,] in cursor.fetchall()]
+        elif category_id:
+            sql = 'select oe.id from original_exports oe, photo_tags pt where oe.id=pt.photo_id and pt.tag_id in (select id from tags where category_id=%r) order by random() limit %r'
+            connection = OriginalExport.objects.db.connection
+            cursor = connection.cursor()
+            cursor.execute(sql % (category_id, number,))
+            objects = [cls.objects.get(id=id) for [id,] in cursor.fetchall()]
+            
         return objects
 
     def perm_url(self):
@@ -122,11 +129,33 @@ class Photo(models.Model):
 
     def as_dict(self):
         return {'id': self.id, 'time': self.time,
+                'name': self.name,
                 'pictures': self.get_exported().as_dict(),
                 'description': self.description,
                 'exif': [i for i in self.get_exif_infos() if i != ' | '],
                 'comments': [ c.as_dict() for c in self.get_comments()],
-                'tags': [tag.name for tag in self.tags.all()]}
+                'tags': [tag.name for tag in self.get_tags()]}#self.tags.all()]}
+
+    def get_tags(self):
+        all_tags = {}
+        for tag in self.tags.all():
+            all_tags[tag.name] = tag
+            #
+            try:
+                parent_tag = Tag.objects.get(id=tag.category_id)
+            except:
+                continue
+            all_tags[parent_tag.name] = parent_tag
+            #import pdb; pdb.set_trace()
+            while 1:
+                try:
+                    parent_tag = Tag.objects.get(id=parent_tag.category_id)
+                except:
+                    break
+                if parent_tag.photo_set.all():
+                    all_tags[parent_tag.name] = parent_tag
+        
+        return all_tags.values()
 
     def get_comments(self):
         comments = Comment.objects.filter(photo_id=self.id)
@@ -293,7 +322,7 @@ class Tag(models.Model):
         cloud = []
         sql = ('select t.name, count(pt.photo_id)'
                '       from photo_tags pt, tags t'
-               '       where t.id=pt.tag_id')
+               '       where t.id=pt.tag_id  and pt.tag_id not in (select category_id from tags)')
         if containing_tags:
             sql += (' and pt.photo_id in'
                     '     (select distinct pt.photo_id from'
@@ -306,8 +335,7 @@ class Tag(models.Model):
                sql += ' and t.name!=%r'
         sql += ' group by t.name order by t.name'
         
-        connection = Tag.objects.db.connection
-        cursor = connection.cursor()
+        cursor = Tag.objects.db.connection.cursor()
         cursor.execute(sql, tuple(containing_tags + containing_tags))
         words = cursor.fetchall()
         if not words:
@@ -332,6 +360,30 @@ class Tag(models.Model):
         tags = Tag.objects.filter(photo__time__gt=date).distinct()
         return tags
 
+    def get_sub_tags_cloud(self):
+        cloud = []
+        sql = ('select t.name, count(pt.photo_id)'
+               '       from photo_tags pt, tags t'
+               '       where t.id=pt.tag_id and t.category_id=%s' % self.id)
+
+        #  and pt.tag_id not in (select category_id from tags)
+        sql += ' group by t.name order by t.name'
+
+        cursor = Tag.objects.db.connection.cursor()
+        cursor.execute(sql)
+        words = cursor.fetchall()
+        if not words:
+            return cloud
+        most = max([x[1] for x in words])
+        thresh = min(int(most * 0.1), 3)
+        for tag, count in words:
+            if count < thresh:
+                continue
+            size = (count - thresh)/(most - thresh) * 2.0 + 0.8
+            url = '%s/tag/%s' % (G_URL, slugify(tag))
+            cloud.append({'size': size, 'url': url, 'name': tag})
+        return cloud
+        
 
     def get_recent_photos(self):
         t = settings.GALLERY_SETTINGS['recent_photos_time']
@@ -376,7 +428,7 @@ class TagAddon(models.Model):
     tag_id = models.IntegerField()
     #tag = models.ForeignKey('Tag')
     description = models.CharField(maxlength=350)
-
+    
     class Admin:
         pass
 

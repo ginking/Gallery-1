@@ -38,7 +38,7 @@
 	   {{photo.get_hits}} hits.
 	   {% endifnotequal %}
 	   Tags:
-	   {% for tag in photo.tags.all %}
+	   {% for tag in photo.get_tags %}
 	   <a href="{{tag.url}}">{{tag.name}}</a>
 	   {% endfor %}
 	 </div>
