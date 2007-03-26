@@ -291,6 +291,8 @@ class Tag(models.Model):
             s = self.name
         return s
 
+    
+    
     def as_dict(self):
         return {'id': self.id, 'name': self.name,
                 'description': self.get_description(),
@@ -340,18 +342,55 @@ class Tag(models.Model):
         words = cursor.fetchall()
         if not words:
             return cloud
-##        tags = Tag.objects
-##         words = [ (t, t.photo_set.count()) for t in tags.order_by('name')]
-        most = max([x[1] for x in words])
-        thresh = min(int(most * 0.1), 3)
-        for tag, count in words:
-            if count < thresh:
-                continue
-            size = (count - thresh)/(most - thresh) * 2.0 + 0.8
-            url = '%s/tag/%s' % (G_URL, slugify(tag))
-            cloud.append({'size': size, 'url': url, 'name': tag})
+        cloud = self._get_cloud(words)
         return cloud
 
+    @classmethod
+    def _get_cloud(self, entries):
+        ''' distribution algo n tags to b bucket, where b represents
+        font size. '''
+        cloud = []
+
+        class _Tag:
+
+            def __init__(self, name, count):
+                self.name = name
+                self.count = count
+
+            def __cmp__(self, other):
+                return cmp(self.count, other.count)
+
+            def __repr__(self):
+                return "<tag: %s : %s>" % (self.name, self.count)
+        
+        tag_list = []
+        for name, count in entries:
+            tag = _Tag(name, count)
+            tag_list.append(tag)
+        
+        nbr_of_buckets = 2
+        base_font_size = 1
+        tresholds = []
+        max_tag = max(tag_list)
+        min_tag = min(tag_list)
+        delta = (float(max_tag.count) -
+                 float(min_tag.count)) / (float(nbr_of_buckets))
+        # set a treshold for all buckets
+        for i in range(nbr_of_buckets):
+            tresh_value =  float(min_tag.count) + (i+1) * delta
+            tresholds.append(tresh_value)
+        # set font size for tags (per bucket)
+        for tag in tag_list:
+            font_set_flag = False
+            for bucket in range(nbr_of_buckets):
+                if font_set_flag == False:
+                    if (tag.count <= tresholds[bucket]):
+                        font_size = base_font_size + bucket * 2
+                        font_set_flag = True
+                        url = '%s/tag/%s' % (G_URL, slugify(tag.name))
+                        cloud.append({'size': font_size, 'url': url,
+                                      'name': tag.name})
+        return cloud
 
     @classmethod
     def get_recent_tags_cloud(cls):
@@ -366,7 +405,6 @@ class Tag(models.Model):
                '       from photo_tags pt, tags t'
                '       where t.id=pt.tag_id and t.category_id=%s' % self.id)
 
-        #  and pt.tag_id not in (select category_id from tags)
         sql += ' group by t.name order by t.name'
 
         cursor = Tag.objects.db.connection.cursor()
@@ -374,14 +412,7 @@ class Tag(models.Model):
         words = cursor.fetchall()
         if not words:
             return cloud
-        most = max([x[1] for x in words])
-        thresh = min(int(most * 0.1), 3)
-        for tag, count in words:
-            if count < thresh:
-                continue
-            size = (count - thresh)/(most - thresh) * 2.0 + 0.8
-            url = '%s/tag/%s' % (G_URL, slugify(tag))
-            cloud.append({'size': size, 'url': url, 'name': tag})
+        cloud = self._get_cloud(words)
         return cloud
         
 
