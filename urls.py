@@ -20,6 +20,10 @@ urls = [
     (r'^photo/(?P<photo_id>\d+)/(?P<tag_name>[\w\-]*)/$',
      'gallery.views.photos_in_tag'),
     (r'^photo/(?P<photo_id>\d+)/$', 'gallery.views.photo'),
+    (r'^date/(?P<year>\d+)/(?P<month>\d+)/(?P<day>\d+)/$',
+     'gallery.views.date'),
+    (r'^date/(?P<year>\d+)/(?P<month>\d+)/(?P<day>\d+)/(?P<page>\d+)/$',
+     'gallery.views.date'),
     #(r'^comment/(?P<comment_id>\d+)/$', 'gallery.views.comment'),
 ]
 

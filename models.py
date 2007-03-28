@@ -6,6 +6,7 @@ from django.conf import settings
 from django.template.defaultfilters import slugify
 from django.contrib.sites.models import Site
 
+import datetime
 import time
 import os, Image
 import EXIF
@@ -136,6 +137,19 @@ class Photo(models.Model):
                 'comments': [ c.as_dict() for c in self.get_comments()],
                 'tags': [tag.name for tag in self.get_tags()]}#self.tags.all()]}
 
+        
+    @classmethod
+    def for_date(self, year, month, day):
+        one_day = datetime.timedelta(hours=23, minutes=59, seconds=59)
+        the_day = datetime.datetime(year=year, month=month, day=day)
+        midnight = the_day + one_day
+        r = (int(time.mktime(the_day.timetuple())),
+             int(time.mktime(midnight.timetuple())))
+        photos = self.objects.exclude(time__gte=r[1]).filter(time__gte=r[0])
+        photos = photos.order_by('time')
+        return photos
+
+
     def get_tags(self):
         all_tags = {}
         for tag in self.tags.all():
@@ -177,6 +191,10 @@ class Photo(models.Model):
 
     def in_tag_url(self, tag_name):
         return '%s/photo/%s/%s' % (G_URL, self.id, slugify(tag_name))
+
+    def same_day_url(self):
+        day = datetime.date.fromtimestamp(self.time)
+        return '%s/date/%s/%s/%s' % (G_URL, day.year, day.month, day.day)
 
     def get_exported(self):
         if not hasattr(self, '_exported'):
@@ -414,7 +432,6 @@ class Tag(models.Model):
             return cloud
         cloud = self._get_cloud(words)
         return cloud
-        
 
     def get_recent_photos(self):
         t = settings.GALLERY_SETTINGS['recent_photos_time']

@@ -25,6 +25,13 @@
     <span>&gt;
       Photo {{ photo.id }}</span>
     {% endif %}
+
+    {% if human_date %}
+    <span>&gt;
+      Photos taken on {{human_date}}</span>
+    {% endif %}
+
+
   </div>
 
 {% block in_body %}

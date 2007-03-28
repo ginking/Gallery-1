@@ -16,6 +16,29 @@ def index(request):
                               {'random': random, 'tags': tags,
                                'recent': recent, 'recent_tags': recent_tags})
 
+def date(request, year, month, day, page=None):
+    year = int(year)
+    month = int(month)
+    day = int(day)
+    photo_set = Photo.for_date(year, month, day)
+
+    total = len(photo_set)
+    page, start, end, nb_pages = _get_page(page, total)
+
+    photos = photo_set[start:end]
+    total_pages = range(nb_pages)
+    slug = '/gallery/date/%s/%s/%s' % (year, month, day)
+    human_date = datetime.date(year, month, day).strftime('%A %d %B')
+    
+    params = {'year': year, 'month': month, 'day': day,
+              'page': page, 'slug': slug,
+              'human_date': human_date,
+              'nb_pages': nb_pages, 'total_pages': total_pages,
+              'photos': photos}
+    return render_to_response('gallery/date.html', params)
+
+    
+
 def photo(request, photo_id, in_tag_name=None):
 
     manipulator = Comment.AddManipulator()
@@ -84,22 +107,8 @@ def photos_in_tag(request, tag_name, photo_id=None, page=None):
         if len(photo_set) == 0:
             return category(request, tag)
 
-        if not page:
-            page = 1
-        else:
-            page = int(page)
-
-        step = settings.GALLERY_SETTINGS.get('items_by_page')
-        if page == 1:
-            start = 0
-        else:
-            start = (page-1)* step
-            
         total = len(photo_set)
-        nb_pages, rest = divmod(total, step)
-        end = (page * step) 
-        if rest:
-            nb_pages += 1
+        page, start, end, nb_pages = _get_page(page, total)
             
         photos = photo_set[start:end]
         total_pages = range(nb_pages)
@@ -116,3 +125,23 @@ def category(request, tag):
               'random': OriginalExport.get_random(10, category_id=tag.id)
               }
     return render_to_response('gallery/category.html', params)
+
+def _get_page(page, total):
+
+    if not page:
+        page = 1
+    else:
+        page = int(page)
+
+    step = settings.GALLERY_SETTINGS.get('items_by_page')
+    if page == 1:
+        start = 0
+    else:
+        start = (page-1)* step
+
+    nb_pages, rest = divmod(total, step)
+    end = (page * step) 
+    if rest:
+        nb_pages += 1
+
+    return page, start, end, nb_pages

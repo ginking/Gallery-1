@@ -37,6 +37,7 @@
 	   {% ifnotequal photo.get_hits 1 %}
 	   {{photo.get_hits}} hits.
 	   {% endifnotequal %}
+	   <a href="{{photo.same_day_url}}">Taken same day</a>
 	   Tags:
 	   {% for tag in photo.get_tags %}
 	   <a href="{{tag.url}}">{{tag.name}}</a>
