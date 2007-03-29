@@ -210,6 +210,12 @@ class Photo(models.Model):
             hits = addon.hits
         return hits
 
+    def get_date(self):
+        day = datetime.date.fromtimestamp(self.time)
+        d = datetime.date(day.year, day.month, day.day)
+        human_date = d.strftime('%A %d %B')
+        return human_date
+
     def increment_hit(self):
         try:
             addon = PhotoAddon.objects.get(photo_id=self.id)

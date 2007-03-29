@@ -6,15 +6,20 @@ from gallery.models import OriginalExport, Photo, Tag, Comment
 from django.conf import settings
 import datetime, time
 
+DEFAULT_PARAMS={'author': settings.GALLERY_SETTINGS['author'],
+                'copyright': settings.GALLERY_SETTINGS['copyright']
+                }
+
 def index(request):
-    random = OriginalExport.get_random(6)
+    random = OriginalExport.get_random(8)
     tags = Tag.get_cloud()
     t = settings.GALLERY_SETTINGS['recent_photos_time']
-    recent = OriginalExport.get_random(6, since=(time.time() - t))
+    recent = OriginalExport.get_random(8, since=(time.time() - t))
     recent_tags = Tag.get_recent_tags_cloud()
-    return render_to_response('gallery/index.html',
-                              {'random': random, 'tags': tags,
-                               'recent': recent, 'recent_tags': recent_tags})
+    params = {'random': random, 'tags': tags,
+              'recent': recent, 'recent_tags': recent_tags}
+    params.update(DEFAULT_PARAMS)
+    return render_to_response('gallery/index.html', params)
 
 def date(request, year, month, day, page=None):
     year = int(year)
@@ -28,6 +33,7 @@ def date(request, year, month, day, page=None):
     photos = photo_set[start:end]
     total_pages = range(nb_pages)
     slug = '/gallery/date/%s/%s/%s' % (year, month, day)
+
     human_date = datetime.date(year, month, day).strftime('%A %d %B')
     
     params = {'year': year, 'month': month, 'day': day,
@@ -35,6 +41,7 @@ def date(request, year, month, day, page=None):
               'human_date': human_date,
               'nb_pages': nb_pages, 'total_pages': total_pages,
               'photos': photos}
+    params.update(DEFAULT_PARAMS)
     return render_to_response('gallery/date.html', params)
 
     
@@ -80,13 +87,10 @@ def photo(request, photo_id, in_tag_name=None):
     previous = p.get_sibling_photo('previous', tag)
     next = p.get_sibling_photo('next', tag)
     p.increment_hit()
-    return render_to_response('gallery/detail.html', {'tag': tag,
-                                                      'photo': p,
-                                                      'previous': previous,
-                                                      'next': next,
-                                                      'exported': exported,
-                                                      'form': form,
-                                                      })
+    params = {'tag': tag, 'photo': p, 'previous': previous,
+              'next': next, 'exported': exported, 'form': form}
+    params.update(DEFAULT_PARAMS)
+    return render_to_response('gallery/detail.html', params)
 
 def photos_in_tag(request, tag_name, photo_id=None, page=None):
     if photo_id:
@@ -116,6 +120,7 @@ def photos_in_tag(request, tag_name, photo_id=None, page=None):
         params = {'tag': tag, 'page': page, 'slug': slug, 'tag_name': tag_name,
                   'nb_pages': nb_pages, 'total_pages': total_pages,
                   'photos': photos}
+        params.update(DEFAULT_PARAMS)
         return render_to_response('gallery/tag.html', params)
 
 def category(request, tag):
@@ -124,6 +129,7 @@ def category(request, tag):
               'tag': tag,
               'random': OriginalExport.get_random(10, category_id=tag.id)
               }
+    params.update(DEFAULT_PARAMS)    
     return render_to_response('gallery/category.html', params)
 
 def _get_page(page, total):

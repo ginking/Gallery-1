@@ -37,11 +37,23 @@
 	   {% ifnotequal photo.get_hits 1 %}
 	   {{photo.get_hits}} hits.
 	   {% endifnotequal %}
-	   <a href="{{photo.same_day_url}}">Taken same day</a>
+	   Taken on <a href="{{photo.same_day_url}}">{{photo.get_date}}</a><br/>
 	   Tags:
 	   {% for tag in photo.get_tags %}
 	   <a href="{{tag.url}}">{{tag.name}}</a>
 	   {% endfor %}
+	 </div>
+
+	 <div id="exif_table" style="display: none;">
+	   <table class="exif" border="0">
+	   {% for info in photo.get_exif_infos %}
+	     <tr><td align="right">{{ info.title }}: </td>
+	         <td><b>{{ info.value }}</b></td></tr>
+	   {% endfor %}
+	   <tr>
+	     <td></td><td><a href="javascript:toggle_div('exif_table');toggle_div('exif_line');">Less info</a></td></tr>
+
+	   </table>
 	 </div>
 
 	 <div class="exif">
@@ -51,6 +63,7 @@
 	     {% endifequal %}
 	     <span title="{{ info.title }}">{{ info.value }}</span>
 	   {% endfor %}
+           | <a href="javascript:toggle_div('exif_table');toggle_div('exif_line');">More info</a>
 	 </div>
 
 	 <div id="mqhq">
@@ -63,42 +76,67 @@
 	 </div>
 
 	 {% for comment in photo.get_comments %}
-	    <div class="comment" id="c{{ comment.id }}">
+	   {% ifequal forloop.counter0 0 %}
+	     <div class="user_comment">
+	   {% endifequal %}
+	   <div class="commententry" id="c{{ comment.id }}">
+	     <div class="name">
 	      <a href="{{comment.url}}">#</a>
-	      {{comment.submit_date|timesince}} ago
-	      <span class="author">
+	       Comment from 
+	       <em>
 		{% if comment.website %}
 		  <a href="{{comment.website}}">{{comment.author}}</a>
 		{% else %}
 		  {{comment.author}}
 		{% endif %}
-	      </span> said: 
-	      <span class="data">
-		{{ comment.comment }}
-	      </span>
-	    </div>
+	       </em>
+	      {{comment.submit_date|timesince}} ago
+	     </div>
+	     
+	     <div class="commentdata">
+	       {{ comment.comment }}
+	     </div>
+	   </div>
+	   {% if forloop.last %}
+	     </div>
+	   {% endif %}
+
 	 {% endfor %}
 
-	 <div class="form">
+	 <div id="comment_form" class="form">
 	 {% if form.has_errors %}
 	 <h2>Please correct the following error{{ form.error_dict|pluralize }}:</h2>
 	 {% endif %}
 
 	 <form method="post" action=".">
-	   <p>
-	     <label for="id_author">Name:</label> {{ form.author }}
+	   <div class="row">
+	     <label class="label" for="id_author">Name:</label>
+	     <div class="control">
+	     {{ form.author }}
+	     </div>
 	     {% if form.author.errors %}*** {{ form.author.errors|join:", " }}{% endif %}
-	   </p>
+	   </div>
 
-	   <p>
-	     <label for="id_website">Website:</label> {{ form.website }}
+	   <div class="row">
+	     <label class="label" for="id_website">Website:</label> 
+	     <div class="control">
+	     {{ form.website }}
+	     </div>
 	     {% if form.website.errors %}*** {{ form.website.errors|join:", " }}{% endif %}
-	   </p>
-	   <p>
-	     <label for="id_comment">Comment:</label> {{ form.comment }}
+	   </div>
+	   <div class="row">
+	     <label class="label" for="id_comment">Comment:</label> 
+	     <div class="control">
+	     {{ form.comment }}
+	     </div>
 	     {% if form.comment.errors %}*** {{ form.comment.errors|join:", " }}{% endif %}
-	   </p>
-	   <input type="submit" />
+	   </div>
+	   <div class="row">
+	     <label class="label"/>
+	     <div class="control">
+	       <input type="submit" />
+	     </div>
+	   </div>
 	 </form>
 	 </div>
 
