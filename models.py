@@ -80,10 +80,16 @@ class OriginalExport(models.Model):
         return "%s%s" % (self.media_url, self.normal_relpath)
 
     def hq_url(self):
-        return "%s%s" % (self.media_url, self.hq_relpath)
+        url = ""
+        if self.hq_relpath:
+            url = "%s%s" % (self.media_url, self.hq_relpath)
+        return url
         
     def mq_url(self):
-        return "%s%s" % (self.media_url, self.mq_relpath)
+        url = ""
+        if self.mq_relpath:
+            url = "%s%s" % (self.media_url, self.mq_relpath)
+        return url
         
 
 ## class PhotoTag(models.Model):
