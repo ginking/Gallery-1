@@ -25,6 +25,13 @@ def index(request):
     return render_to_response('gallery/index.html', params,
                               context_instance=RequestContext(request))
 
+def popular(request, tag_name=None):
+    photos = Photo.popular(tag_name)
+    params = {'photos': photos}
+    return render_to_response('gallery/popular.html', params,
+                              context_instance=RequestContext(request))
+    
+
 def date(request, year, month, day, page=None):
     year = int(year)
     month = int(month)

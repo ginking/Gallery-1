@@ -24,6 +24,8 @@ urls = [
      'gallery.views.date'),
     (r'^date/(?P<year>\d+)/(?P<month>\d+)/(?P<day>\d+)/(?P<page>\d+)/$',
      'gallery.views.date'),
+    (r'^popular/$', 'gallery.views.popular'),
+    (r'^popular/(?P<tag_name>[\w\+\-]*)/$', 'gallery.views.popular'),
     #(r'^comment/(?P<comment_id>\d+)/$', 'gallery.views.comment'),
     (r'^openid/$', 'django_openidconsumer.views.begin', {'sreg': 'fullname'}),
     (r'^openid/complete/$', 'django_openidconsumer.views.complete'),

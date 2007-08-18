@@ -155,11 +155,35 @@ class Photo(models.Model):
         photos = photos.order_by('time')
         return photos
 
+    @classmethod
+    def popular(cls, tag_name):
+        photos = []
+        # Take at most 10 photos having their hits number > 20
+        max_photos = 10
+        min_hits = 20
+        most_viewed = PhotoAddon.objects.exclude(hits__lte=min_hits).order_by('-hits')
+        if not tag_name:
+            most_viewed = most_viewed[:max_photos]
+            
+        for addon in most_viewed:
+            photo = cls.objects.get(id=addon.photo_id)
+            if tag_name:
+                tags = [ slugify(t.name) for t in photo.get_tags(recurse=False)]
+                if tag_name not in tags:
+                    continue
+            if len(photos) > max_photos:
+                break
+            photo.hits = addon.hits
+            photos.append(photo)
+        
+        return photos
 
-    def get_tags(self):
+    def get_tags(self, recurse=True):
         all_tags = {}
         for tag in self.tags.all():
             all_tags[tag.name] = tag
+            if not recurse:
+                continue
             #
             try:
                 parent_tag = Tag.objects.get(id=tag.category_id)
