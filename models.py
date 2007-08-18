@@ -190,8 +190,8 @@ class Photo(models.Model):
         #url = 'http://%s%s/photo/%s' % (SITE, G_URL, self.id)
         url = '%s/photo/%s/' % (G_URL, self.id)
         if extra:
-            if not extra.startswith('/'):
-                extra = '/' + extra
+            if extra.startswith('/'):
+                extra = extra[1:]
             url += extra
         return url
 
