@@ -7,7 +7,7 @@ Tag: {{tag_name}}{% endblock %}
      {% if tag %}
      <a href="{{ photo.url }}{{ tag.name|slugify }}">
      {% else %}
-     <a href="{{ photo.url }}/">
+     <a href="{{ photo.url }}">
      {% endif %}
        <img title="{{photo.get_hits}} hits" 
 	    src="{{ photo.get_exported.thumb_url }}"></img>
