@@ -178,7 +178,7 @@ class Photo(models.Model):
         return all_tags.values()
 
     def get_comments(self):
-        comments = Comment.objects.filter(photo_id=self.id)
+        comments = Comment.objects.filter(photo_id=self.id).order_by('submit_date')
         if not comments:
             comments = []
         return comments
