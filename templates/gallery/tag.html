@@ -17,11 +17,11 @@ Tag: {{tag_name}}{% endblock %}
   <br/>
   {% ifnotequal nb_pages 1 %}
    {% ifnotequal page 1 %}
-     <a href="{{ slug }}/{{ page|add:"-1" }}">Previous</a>
+     <a href="{{ slug }}{{ page|add:"-1" }}">Previous</a>
    {% endifnotequal %}
    {% for page_nb in total_pages %}
      {% ifnotequal forloop.counter page %}
-        <a href="{{ slug }}/{{ forloop.counter }}">{{forloop.counter}}
+        <a href="{{ slug }}{{ forloop.counter }}">{{forloop.counter}}
         </a>
      {% else %}
         {{forloop.counter}}
@@ -29,7 +29,7 @@ Tag: {{tag_name}}{% endblock %}
         &nbsp;
    {% endfor %}
    {% ifnotequal page nb_pages %}
-      <a href="{{ slug }}/{{ page|add:"1" }}">Next</a>
+      <a href="{{ slug }}{{ page|add:"1" }}">Next</a>
    {% endifnotequal %}
   {% endifnotequal %}
 
