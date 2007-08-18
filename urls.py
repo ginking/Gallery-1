@@ -25,6 +25,10 @@ urls = [
     (r'^date/(?P<year>\d+)/(?P<month>\d+)/(?P<day>\d+)/(?P<page>\d+)/$',
      'gallery.views.date'),
     #(r'^comment/(?P<comment_id>\d+)/$', 'gallery.views.comment'),
+    (r'^openid/$', 'django_openidconsumer.views.begin', {'sreg': 'fullname'}),
+    (r'^openid/complete/$', 'django_openidconsumer.views.complete'),
+    (r'^openid/signout/$', 'django_openidconsumer.views.signout'),
+   
 ]
 
 media_path = settings.GALLERY_SETTINGS.get('media_path')

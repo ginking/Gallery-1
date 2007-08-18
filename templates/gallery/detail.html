@@ -32,8 +32,8 @@
 
 	 <h2>{{ photo.description }}</h2>
 
-
 	 <div id="tagsforphoto" style="text-align: center; margin-top:24px;">
+	 <a href="{{ photo.url }}">Permanent link</a>
 	   {% ifnotequal photo.get_hits 1 %}
 	   {{photo.get_hits}} hits.
 	   {% endifnotequal %}
@@ -83,6 +83,9 @@
 	     <div class="name">
 	      <a href="{{comment.url}}">#</a>
 	       Comment from 
+	       {% if comment.is_openid %}
+	        <img src="/gallery/static/openid-14x14.png"/>
+	       {% endif %}
 	       <em>
 		{% if comment.website %}
 		  <a href="{{comment.website}}">{{comment.author}}</a>
@@ -104,11 +107,12 @@
 	 {% endfor %}
 
 	 <div id="comment_form" class="form">
-	 {% if form.has_errors %}
-	 <h2>Please correct the following error{{ form.error_dict|pluralize }}:</h2>
-	 {% endif %}
-
 	 <form method="post" action=".">
+	   {% if request.openid %}
+	   Posting using your OpenID identity
+	   {% else %}
+	   <p><a href="/gallery/openid/?next={{ photo.url }}">
+	       Sign in with OpenID (optional)</a></p>
 	   <div class="row">
 	     <label class="label" for="id_author">Name:</label>
 	     <div class="control">
@@ -124,6 +128,8 @@
 	     </div>
 	     {% if form.website.errors %}*** {{ form.website.errors|join:", " }}{% endif %}
 	   </div>
+	   
+	   {% endif %}
 	   <div class="row">
 	     <label class="label" for="id_comment">Comment:</label> 
 	     <div class="control">

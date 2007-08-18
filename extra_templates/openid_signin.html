@@ -1,0 +1,39 @@
+{% extends "gallery/base.html" %}
+
+{% block title %}Sign in with your OpenID{% endblock %}
+
+{% block extra_head %}
+<style type="text/css">
+input.openid {
+  background: url({{ logo }}) no-repeat; 
+  background-position: 0 50%;
+  padding-left: 16px;
+}
+</style>
+{% endblock %}
+
+
+{% block body %}
+<h2>Sign in with your OpenID</h2>
+
+<a href="http://www.openidenabled.com/openid/about-openid">
+What is OpenID?</a>
+<div id="comment_form" class="form">
+<form action="{{ action }}" method="post">
+
+	   <div class="row">
+	     <label class="label" for="id_openid">OpenID:</label> 
+	     <div class="control">
+	       <input class="openid" type="text" name="openid_url"> 
+	     </div>
+	   </div>
+	   <div class="row">
+	     <label class="label"/>
+	     <div class="control">
+	       <input type="submit" value="Sign in" />
+	     </div>
+	   </div>
+</form>
+</div>
+</body>
+{% endblock %}

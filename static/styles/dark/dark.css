@@ -205,6 +205,7 @@ div.navigation {
     -moz-border-radius: 3px; 
 }
 
+/*
 div.navigation a:first-child {
 	padding-left: 24px;
 	background: url('home-inactive.png') top left no-repeat;
@@ -213,6 +214,7 @@ div.navigation a:first-child {
 div.navigation a:first-child:hover {
 	background: url('home.png') top left no-repeat;
 }
+*/
 
 div.footer {
    font-size: 11px;

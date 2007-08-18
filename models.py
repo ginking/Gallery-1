@@ -186,7 +186,9 @@ class Photo(models.Model):
     def url(self, extra=None):
         if hasattr(self, '_url'):
             return self._url
-        url = '%s/photo/%s' % (G_URL, self.id)
+
+        #url = 'http://%s%s/photo/%s' % (SITE, G_URL, self.id)
+        url = '%s/photo/%s/' % (G_URL, self.id)
         if extra:
             if not extra.startswith('/'):
                 extra = '/' + extra
@@ -502,6 +504,7 @@ class Comment(models.Model):
     author = models.CharField(maxlength=60)
     website = models.CharField(maxlength=128, blank=True)
     submit_date = models.DateTimeField(blank=True)
+    is_openid = models.BooleanField(default=True)
     
     class Admin:
         list_display = ('submit_date', 'photo',)

@@ -1,8 +1,10 @@
 from django.http import Http404, HttpResponse, HttpResponseRedirect
-from django import forms
-
+#from django import forms
+from django import newforms as forms
 from django.shortcuts import render_to_response, get_object_or_404
 from gallery.models import OriginalExport, Photo, Tag, Comment
+from gallery import forms as gallery_forms
+from django.template import RequestContext
 from django.conf import settings
 import datetime, time
 
@@ -17,9 +19,11 @@ def index(request):
     recent = OriginalExport.get_random(8, since=(time.time() - t))
     recent_tags = Tag.get_recent_tags_cloud()
     params = {'random': random, 'tags': tags,
-              'recent': recent, 'recent_tags': recent_tags}
+              'recent': recent, 'recent_tags': recent_tags,
+              'openid': request.openid}
     params.update(DEFAULT_PARAMS)
-    return render_to_response('gallery/index.html', params)
+    return render_to_response('gallery/index.html', params,
+                              context_instance=RequestContext(request))
 
 def date(request, year, month, day, page=None):
     year = int(year)
@@ -32,7 +36,7 @@ def date(request, year, month, day, page=None):
 
     photos = photo_set[start:end]
     total_pages = range(nb_pages)
-    slug = '/gallery/date/%s/%s/%s' % (year, month, day)
+    slug = '/gallery/date/%s/%s/%s/' % (year, month, day)
 
     human_date = datetime.date(year, month, day).strftime('%A %d %B')
     
@@ -42,42 +46,43 @@ def date(request, year, month, day, page=None):
               'nb_pages': nb_pages, 'total_pages': total_pages,
               'photos': photos}
     params.update(DEFAULT_PARAMS)
-    return render_to_response('gallery/date.html', params)
+    return render_to_response('gallery/date.html', params,
+                              context_instance=RequestContext(request))
 
     
 
 def photo(request, photo_id, in_tag_name=None):
-
-    manipulator = Comment.AddManipulator()
-
-    if request.POST:
-        # If data was POSTed, we're trying to create a new Place.
-        new_data = request.POST.copy()
-
-        # Check for errors.
-        errors = manipulator.get_validation_errors(new_data)
-        if not errors:
-            # No errors. This means we can save the data!
-            manipulator.do_html2python(new_data)
-            new_data['photo_id'] = photo_id
-            today = datetime.datetime.today()
-            new_data['submit_date_date'] = today.date()
-            new_data['submit_date_time'] = today.time()
-            
-            new_comment = manipulator.save(new_data)
-            
-            # Redirect to the object's "edit" page. Always use a redirect
-            # after POST data, so that reloads don't accidently create
-            # duplicate entires, and so users don't see the confusing
-            # "Repost POST data?" alert box in their browsers.
-            return HttpResponseRedirect("/gallery/photo/%s/" % photo_id)
-    else:
-        # No POST, so we want a brand new form without any data or errors.
-        errors = new_data = {}
-
-    # Create the FormWrapper, template, context, response.
-    form = forms.FormWrapper(manipulator, new_data, errors)
     
+    CommentForm = gallery_forms.CommentForm
+    if request.method == 'POST':
+        post = dict(request.POST)
+        
+        if request.openid:
+            post['author'] = request.openid.sreg.get('fullname',
+                                                     request.openid)
+            post['website'] = request.openid
+            is_openid = True
+        else:
+            post['author'] = post['author'][0]
+            post['website'] = post['website'][0]
+            is_openid = False
+            
+        post['comment'] = post['comment'][0]
+        form = CommentForm(post)
+        if form.is_valid():
+            # Do form processing
+            data = form.clean_data
+            data['photo_id'] = photo_id
+            data['submit_date'] = datetime.datetime.today()
+            data['is_openid'] = is_openid
+            comment = Comment(**data)
+            comment.save()
+            form = CommentForm()
+        else:
+            print form.errors, form['website']
+            form = CommentForm(request.POST)
+    else:
+        form = CommentForm()
     p = get_object_or_404(Photo, pk=photo_id)
     exported = get_object_or_404(OriginalExport, id=photo_id)
     if in_tag_name:
@@ -87,10 +92,12 @@ def photo(request, photo_id, in_tag_name=None):
     previous = p.get_sibling_photo('previous', tag)
     next = p.get_sibling_photo('next', tag)
     p.increment_hit()
-    params = {'tag': tag, 'photo': p, 'previous': previous,
+    slug = '/gallery/photo/%s/' % p.id
+    params = {'tag': tag, 'photo': p, 'previous': previous, 'slug': slug,
               'next': next, 'exported': exported, 'form': form}
     params.update(DEFAULT_PARAMS)
-    return render_to_response('gallery/detail.html', params)
+    return render_to_response('gallery/detail.html', params,
+                              context_instance=RequestContext(request))
 
 def photos_in_tag(request, tag_name, photo_id=None, page=None):
     if photo_id:
@@ -116,12 +123,13 @@ def photos_in_tag(request, tag_name, photo_id=None, page=None):
             
         photos = photo_set[start:end]
         total_pages = range(nb_pages)
-        slug = '/gallery/tag/%s' % tag_name
+        slug = '/gallery/tag/%s/' % tag_name
         params = {'tag': tag, 'page': page, 'slug': slug, 'tag_name': tag_name,
                   'nb_pages': nb_pages, 'total_pages': total_pages,
                   'photos': photos}
         params.update(DEFAULT_PARAMS)
-        return render_to_response('gallery/tag.html', params)
+        return render_to_response('gallery/tag.html', params,
+                                  context_instance=RequestContext(request))
 
 def category(request, tag):
 
@@ -130,7 +138,8 @@ def category(request, tag):
               'random': OriginalExport.get_random(10, category_id=tag.id)
               }
     params.update(DEFAULT_PARAMS)    
-    return render_to_response('gallery/category.html', params)
+    return render_to_response('gallery/category.html', params,
+                              context_instance=RequestContext(request))
 
 def _get_page(page, total):
 

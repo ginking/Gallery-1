@@ -5,7 +5,7 @@ Tag: {{tag_name}}{% endblock %}
 
   {% for photo in photos %}
      {% if tag %}
-     <a href="{{ photo.url }}/{{ tag.name|slugify }}">
+     <a href="{{ photo.url }}{{ tag.name|slugify }}">
      {% else %}
      <a href="{{ photo.url }}/">
      {% endif %}
