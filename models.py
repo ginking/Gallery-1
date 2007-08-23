@@ -166,7 +166,10 @@ class Photo(models.Model):
             most_viewed = most_viewed[:max_photos]
             
         for addon in most_viewed:
-            photo = cls.objects.get(id=addon.photo_id)
+            try:
+                photo = cls.objects.get(id=addon.photo_id)
+            except:
+                continue
             if tag_name:
                 tags = [ slugify(t.name) for t in photo.get_tags(recurse=False)]
                 if tag_name not in tags:
