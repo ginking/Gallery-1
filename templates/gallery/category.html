@@ -11,7 +11,7 @@ Category: {{tag.name}}{% endblock %}
 
   {% block tag_cloud_top %}
   {% for tag in tags %}
-    <a style="font-size: {{ tag.size }}em; text-decoration: none;"
+    <a style="font-size: {{ tag.size }}px; text-decoration: none;"
        href="{{ tag.url }}">{{ tag.name }}</a>
   {% endfor %}
   {% endblock %}
