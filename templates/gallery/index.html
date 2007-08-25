@@ -4,12 +4,14 @@
   {% for oe in random %}
      <a href="{{ oe.perm_url }}"><img src="{{ oe.thumb_url }}"></img></a>
   {% endfor %}
+     <p><a style="text-decoration: none" 
+           href="{{ rel_url }}/popular">Popular photos</a></p>
   {% endblock %}
 
 
   {% block tag_cloud_top %}
   {% for tag in tags %}
-    <a style="font-size: {{ tag.size }}em; text-decoration: none;"
+    <a style="font-size: {{ tag.size }}px; text-decoration: none;"
        href="{{ tag.url }}">{{ tag.name }}</a>
   {% endfor %}
   {% endblock %}
@@ -36,7 +38,7 @@
      recent photos in 
      {% for tag in recent_tags %}
      <a style="text-decoration: none" 
-	href="{{ tag.url }}">{{ tag.name }}</a>
+	href="{{ tag.recent_url }}">{{ tag.name }}</a>
      {% endfor %}
      {% endif %}
   

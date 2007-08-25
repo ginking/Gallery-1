@@ -26,11 +26,16 @@
 	: {{ tag.get_description }}
 	{% endif %}
       </a></span>
+      
+      <span>&gt;<a href="{{ tag.popular_url }}"> Popular</a>
+      </span>
+
     {% else %}
-      {% if tag_name %}
-        <!-- TODO: add form submit -->
+<!--      {% if tag_name %}
+         TODO: add form submit
 	<input type="text" value="{{ tag_name }}" />
       {% endif %}
+-->
     {% endif %}
 
     {% if photo.id %}

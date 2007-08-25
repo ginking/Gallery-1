@@ -178,8 +178,15 @@ class Photo(models.Model):
                 break
             photo.hits = addon.hits
             photos.append(photo)
-        
         return photos
+
+    @classmethod
+    def recent(cls):
+        t = settings.GALLERY_SETTINGS['recent_photos_time']
+        date = int(time.time() - t)
+        photos = Photo.objects.filter(time__gt=date).distinct()
+        return photos
+        
 
     def get_tags(self, recurse=True):
         all_tags = {}
@@ -427,8 +434,8 @@ class Tag(models.Model):
             tag = _Tag(name, count)
             tag_list.append(tag)
         
-        nbr_of_buckets = 2
-        base_font_size = 1
+        nbr_of_buckets = 8
+        base_font_size = 16
         tresholds = []
         max_tag = max(tag_list)
         min_tag = min(tag_list)
@@ -444,7 +451,7 @@ class Tag(models.Model):
             for bucket in range(nbr_of_buckets):
                 if font_set_flag == False:
                     if (tag.count <= tresholds[bucket]):
-                        font_size = base_font_size + bucket * 2
+                        font_size = base_font_size + (bucket * 2)
                         font_set_flag = True
                         url = '%s/tag/%s' % (G_URL, slugify(tag.name))
                         cloud.append({'size': font_size, 'url': url,
@@ -484,6 +491,12 @@ class Tag(models.Model):
         return '%s/tag/%s' % (G_URL, slugify(self.name))
 
     get_absolute_url = url
+
+    def recent_url(self):
+        return '%s/recent/%s' % (G_URL, slugify(self.name))
+
+    def popular_url(self):
+        return '%s/popular/%s' % (G_URL, slugify(self.name))
 
     def get_description(self):
         try:

@@ -9,7 +9,8 @@ from django.conf import settings
 import datetime, time
 
 DEFAULT_PARAMS={'author': settings.GALLERY_SETTINGS['author'],
-                'copyright': settings.GALLERY_SETTINGS['copyright']
+                'copyright': settings.GALLERY_SETTINGS['copyright'],
+                'rel_url': settings.GALLERY_SETTINGS['rel_url']
                 }
 
 def index(request):
@@ -30,7 +31,31 @@ def popular(request, tag_name=None):
     params = {'photos': photos}
     return render_to_response('gallery/popular.html', params,
                               context_instance=RequestContext(request))
-    
+
+
+def recent(request, tag_name=None, page=None):
+    tag = Tag.with_name(tag_name)
+    if not tag:
+        photo_set = Photo.recent()
+    else:
+        photo_set = tag.get_recent_photos()
+
+    total = len(photo_set)
+    page, start, end, nb_pages = _get_page(page, total)
+
+    photos = photo_set[start:end]
+    total_pages = range(nb_pages)
+
+    slug = '/gallery/recent/'
+    if tag_name:
+        slug += '%s/' % tag_name
+
+    params = {'tag': tag, 'page': page, 'slug': slug, 'tag_name': tag_name,
+              'nb_pages': nb_pages, 'total_pages': total_pages,
+              'photos': photos}
+    params.update(DEFAULT_PARAMS)
+    return render_to_response('gallery/tag.html', params,
+                              context_instance=RequestContext(request))
 
 def date(request, year, month, day, page=None):
     year = int(year)
