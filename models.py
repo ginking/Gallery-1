@@ -171,7 +171,7 @@ class Photo(models.Model):
             except:
                 continue
             if tag_name:
-                tags = [ slugify(t.name) for t in photo.get_tags(recurse=False)]
+                tags = [ slugify(t.name) for t in photo.tags.all() ]
                 if tag_name not in tags:
                     continue
             if len(photos) > max_photos:
@@ -184,7 +184,7 @@ class Photo(models.Model):
     def recent(cls):
         t = settings.GALLERY_SETTINGS['recent_photos_time']
         date = int(time.time() - t)
-        photos = Photo.objects.filter(time__gt=date).distinct()
+        photos = cls.objects.filter(time__gt=date).distinct()
         return photos
         
 
