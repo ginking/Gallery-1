@@ -24,6 +24,20 @@ body {
 	 background: #2e3436 url('title.png') top left no-repeat fixed;
 }
 
+#header a
+{
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 58px;
+    height: 259px;
+}
+
+#header a h1
+{
+    display: none;
+}
+
 img {
    border: 0px;
 }
@@ -40,10 +54,6 @@ a:hover {
    color: #ffcc7a;
 }
 
-
-h1.title {
-	display: none;
-}
 
 /* mini thumbnails */
 
