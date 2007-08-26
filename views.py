@@ -4,6 +4,7 @@ from django import newforms as forms
 from django.shortcuts import render_to_response, get_object_or_404
 from gallery.models import OriginalExport, Photo, Tag, Comment
 from gallery import forms as gallery_forms
+from gallery.utils import beautyfull_text, get_page
 from django.template import RequestContext
 from django.conf import settings
 import datetime, time
@@ -41,7 +42,7 @@ def recent(request, tag_name=None, page=None):
         photo_set = tag.get_recent_photos()
 
     total = len(photo_set)
-    page, start, end, nb_pages = _get_page(page, total)
+    page, start, end, nb_pages = get_page(page, total)
 
     photos = photo_set[start:end]
     total_pages = range(nb_pages)
@@ -64,7 +65,7 @@ def date(request, year, month, day, page=None):
     photo_set = Photo.for_date(year, month, day)
 
     total = len(photo_set)
-    page, start, end, nb_pages = _get_page(page, total)
+    page, start, end, nb_pages = get_page(page, total)
 
     photos = photo_set[start:end]
     total_pages = range(nb_pages)
@@ -104,6 +105,7 @@ def photo(request, photo_id, in_tag_name=None):
         if form.is_valid():
             # Do form processing
             data = form.clean_data
+            data['comment'] = beautyfull_text(data['comment'])
             data['photo_id'] = photo_id
             data['submit_date'] = datetime.datetime.today()
             data['is_openid'] = is_openid
@@ -151,7 +153,7 @@ def photos_in_tag(request, tag_name, photo_id=None, page=None):
             return category(request, tag)
 
         total = len(photo_set)
-        page, start, end, nb_pages = _get_page(page, total)
+        page, start, end, nb_pages = get_page(page, total)
             
         photos = photo_set[start:end]
         total_pages = range(nb_pages)
@@ -173,22 +175,3 @@ def category(request, tag):
     return render_to_response('gallery/category.html', params,
                               context_instance=RequestContext(request))
 
-def _get_page(page, total):
-
-    if not page:
-        page = 1
-    else:
-        page = int(page)
-
-    step = settings.GALLERY_SETTINGS.get('items_by_page')
-    if page == 1:
-        start = 0
-    else:
-        start = (page-1)* step
-
-    nb_pages, rest = divmod(total, step)
-    end = (page * step) 
-    if rest:
-        nb_pages += 1
-
-    return page, start, end, nb_pages
