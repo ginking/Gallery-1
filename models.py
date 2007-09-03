@@ -118,8 +118,8 @@ class PhotoTags(models.ManyToManyField):
 class Photo(models.Model):
     id = models.IntegerField(primary_key=True)
     time = models.IntegerField()
-    directory_path = models.TextField() # This field type is a guess.
-    name = models.TextField() # This field type is a guess.
+    uri = models.TextField()
+    #name = models.TextField() # This field type is a guess.
     description = models.TextField()
     default_version_id = models.IntegerField()
     tags = PhotoTags()
@@ -133,6 +133,11 @@ class Photo(models.Model):
         else:
             desc = self.name
         return desc
+
+
+    @property
+    def name(self):
+        return os.path.basename(self.uri)
 
     def as_dict(self):
         return {'id': self.id, 'time': self.time,

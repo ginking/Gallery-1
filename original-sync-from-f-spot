@@ -294,18 +294,21 @@ def scale_photo(photo_id, tmpdir):
     
 
     cur = cxn.cursor()
-    cur.execute('select directory_path, name, default_version_id from photos where id=%d' %
-                (photo_id,))
-    dirname, basename, version_id = cur.fetchone()
-    basename = encode(basename)
-    dirname = encode(dirname)
+    cur.execute('select uri, default_version_id from photos where id=%d'
+                % (photo_id,))
+    path, version_id = cur.fetchone()
+    path = path[7:]
+    basename = encode(os.path.basename(path))
+    dirname = encode(os.path.dirname(path))
     orig_basename = basename
     
     if version_id > 1:
-        cur.execute('select name from photo_versions where photo_id=%d' % photo_id)
-        (version_name,) = cur.fetchone()
-        basename, ext = os.path.splitext(basename)
-        basename = '%s (%s)%s' % (basename, version_name, ext)
+        cur.execute('select uri from photo_versions where photo_id=%d' % photo_id)
+        (path,) = cur.fetchone()
+        path = path[7:]
+##         basename, ext = os.path.splitext(basename)
+##         basename = '%s (%s)%s' % (basename, version_name, ext)
+        basename = os.path.basename(path)
         
     path = os.path.join(dirname, basename)
     info('Preparing to scale %s', path)
@@ -394,9 +397,8 @@ def mkdirp(uri, relpath):
 
 def copy_photo(photo_id, tmpdir, scaled):
     cur = cxn.cursor()
-    cur.execute('select directory_path from photos where id=%d' %
-                (photo_id,))
-    relpath, = cur.fetchone()
+    cur.execute('select uri from photos where id=%d' % (photo_id,))
+    relpath = os.path.dirname(cur.fetchone()[0][7:])
     if relpath.startswith(options.photos_path):
         relpath = relpath[len(options.photos_path):]
     if relpath[0] == '/':
