@@ -8,11 +8,14 @@ from gallery.utils import beautyfull_text, get_page
 from django.template import RequestContext
 from django.conf import settings
 import datetime, time
+import akismet
 
 DEFAULT_PARAMS={'author': settings.GALLERY_SETTINGS['author'],
                 'copyright': settings.GALLERY_SETTINGS['copyright'],
                 'rel_url': settings.GALLERY_SETTINGS['rel_url']
                 }
+
+aksmet = akismet.Akismet()
 
 def index(request):
     random = OriginalExport.get_random(8)
@@ -85,6 +88,8 @@ def date(request, year, month, day, page=None):
     
 
 def photo(request, photo_id, in_tag_name=None):
+    p = get_object_or_404(Photo, pk=photo_id)
+    exported = get_object_or_404(OriginalExport, id=photo_id)
     
     CommentForm = gallery_forms.CommentForm
     if request.method == 'POST':
@@ -105,6 +110,17 @@ def photo(request, photo_id, in_tag_name=None):
         if form.is_valid():
             # Do form processing
             data = form.clean_data
+            ak_data = { 
+                'user_ip': request.META.get('REMOTE_ADDR', '127.0.0.1'), 
+                'user_agent': request.META.get('HTTP_USER_AGENT', ''), 
+                'referrer': request.META.get('HTTP_REFERER', ''), 
+                'comment_type': 'comment', 
+                'comment_author': post['author'],
+                'comment_author_url': post['website'],
+                
+                }
+            data['public'] = not aksmet.comment_check(data, ak_data)
+            
             data['comment'] = beautyfull_text(data['comment'])
             data['photo_id'] = photo_id
             data['submit_date'] = datetime.datetime.today()
@@ -113,12 +129,10 @@ def photo(request, photo_id, in_tag_name=None):
             comment.save()
             form = CommentForm()
         else:
-            print form.errors, form['website']
             form = CommentForm(request.POST)
     else:
         form = CommentForm()
-    p = get_object_or_404(Photo, pk=photo_id)
-    exported = get_object_or_404(OriginalExport, id=photo_id)
+        
     if in_tag_name:
         tag = Tag.with_name(in_tag_name)
     else:

@@ -79,6 +79,7 @@
 	   {% ifequal forloop.counter0 0 %}
 	     <div class="user_comment">
 	   {% endifequal %}
+	   {% if comment.public %}
 	   <div class="commententry" id="c{{ comment.id }}">
 	     <div class="name">
 	      <a href="{{comment.url}}">#</a>
@@ -100,6 +101,7 @@
 	       {{ comment.comment }}
 	     </div>
 	   </div>
+           {% endif %}
 	   {% if forloop.last %}
 	     </div>
 	   {% endif %}

@@ -550,16 +550,18 @@ class Comment(models.Model):
     website = models.CharField(maxlength=128, blank=True)
     submit_date = models.DateTimeField(blank=True)
     is_openid = models.BooleanField(default=True)
+    public = models.BooleanField(default=True)
     
     class Admin:
-        list_display = ('submit_date', 'photo',)
+        list_display = ('id','public','photo', 'comment', 'submit_date',)
+
 
     class Meta:
         ordering = ('-submit_date',)
     
     def __str__(self):
         return "%s on photo %s: %s..." % (self.author, self.photo_id,
-                                       self.comment[:100])
+                                          self.comment[:100])
 
     def as_dict(self):
         return {'comment': self.comment, 'author': self.author,
