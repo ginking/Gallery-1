@@ -43,4 +43,4 @@ class Comments(Feed):
     description = "Comments recently added"
 
     def items(self):
-        return Comment.objects.filter(public__eq=True).order_by('-submit_date')[:15]
+        return Comment.objects.filter(public=True).order_by('-submit_date')[:15]
