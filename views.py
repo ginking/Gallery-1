@@ -7,6 +7,9 @@ from gallery import forms as gallery_forms
 from gallery.utils import beautyfull_text, get_page
 from django.template import RequestContext
 from django.conf import settings
+from django.views.decorators.cache import cache_page
+from django.core.cache import cache
+
 import datetime, time
 import akismet
 
@@ -85,12 +88,11 @@ def date(request, year, month, day, page=None):
     return render_to_response('gallery/date.html', params,
                               context_instance=RequestContext(request))
 
-    
 
 def photo(request, photo_id, in_tag_name=None):
     p = get_object_or_404(Photo, pk=photo_id)
     exported = get_object_or_404(OriginalExport, id=photo_id)
-    
+
     CommentForm = gallery_forms.CommentForm
     if request.method == 'POST':
         post = dict(request.POST)
@@ -119,7 +121,10 @@ def photo(request, photo_id, in_tag_name=None):
                 'comment_author_url': post['website'],
                 
                 }
-            data['public'] = not aksmet.comment_check(data, ak_data)
+            try:
+                data['public'] = not aksmet.comment_check(data, ak_data)
+            except:
+                data['public'] = True
             
             data['comment'] = beautyfull_text(data['comment'])
             data['photo_id'] = photo_id
@@ -146,6 +151,8 @@ def photo(request, photo_id, in_tag_name=None):
     params.update(DEFAULT_PARAMS)
     return render_to_response('gallery/detail.html', params,
                               context_instance=RequestContext(request))
+
+#photo = cache_page(photo, 60 * 15)
 
 def photos_in_tag(request, tag_name, photo_id=None, page=None):
     if photo_id:

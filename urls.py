@@ -33,6 +33,7 @@ urls = [
     (r'^openid/$', 'django_openidconsumer.views.begin', {'sreg': 'fullname'}),
     (r'^openid/complete/$', 'django_openidconsumer.views.complete'),
     (r'^openid/signout/$', 'django_openidconsumer.views.signout'),
+    (r'^status/cache/$', 'gallery.memcached_status.cache_status'),
    
 ]
 
