@@ -22,6 +22,8 @@ DEFAULT_PARAMS={'author': settings.GALLERY_SETTINGS['author'],
 CACHE_TIMEOUT=60*10
 
 aksmet = akismet.Akismet()
+aksmet.setAPIKey(settings.GALLERY_SETTINGS['akismet_api_key'],
+                 settings.GALLERY_SETTINGS['blog_url'])
 
 def index(request):
     random = OriginalExport.get_random(8)
@@ -123,10 +125,7 @@ def photo(request, photo_id, in_tag_name=None):
                 'comment_type': 'comment', 
                 'comment_author': post['author'],
                 'comment_author_url': post['website']}
-            try:
-                data['public'] = not aksmet.comment_check(data, ak_data)
-            except:
-                data['public'] = True
+            data['public'] = not aksmet.comment_check(data, ak_data)
             
             data['comment'] = beautyfull_text(data['comment'])
             data['photo_id'] = photo_id
