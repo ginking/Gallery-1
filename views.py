@@ -18,6 +18,9 @@ DEFAULT_PARAMS={'author': settings.GALLERY_SETTINGS['author'],
                 'rel_url': settings.GALLERY_SETTINGS['rel_url']
                 }
 
+# 10 minuts
+CACHE_TIMEOUT=60*10
+
 aksmet = akismet.Akismet()
 
 def index(request):
@@ -32,13 +35,14 @@ def index(request):
     params.update(DEFAULT_PARAMS)
     return render_to_response('gallery/index.html', params,
                               context_instance=RequestContext(request))
+index = cache_page(index, CACHE_TIMEOUT)
 
 def popular(request, tag_name=None):
     photos = Photo.popular(tag_name)
     params = {'photos': photos}
     return render_to_response('gallery/popular.html', params,
                               context_instance=RequestContext(request))
-
+popular = cache_page(popular, CACHE_TIMEOUT)
 
 def recent(request, tag_name=None, page=None):
     tag = Tag.with_name(tag_name)
@@ -63,6 +67,7 @@ def recent(request, tag_name=None, page=None):
     params.update(DEFAULT_PARAMS)
     return render_to_response('gallery/tag.html', params,
                               context_instance=RequestContext(request))
+recent = cache_page(recent, CACHE_TIMEOUT)
 
 def date(request, year, month, day, page=None):
     year = int(year)
@@ -87,12 +92,11 @@ def date(request, year, month, day, page=None):
     params.update(DEFAULT_PARAMS)
     return render_to_response('gallery/date.html', params,
                               context_instance=RequestContext(request))
-
+date = cache_page(date, CACHE_TIMEOUT)
 
 def photo(request, photo_id, in_tag_name=None):
-    p = get_object_or_404(Photo, pk=photo_id)
-    exported = get_object_or_404(OriginalExport, id=photo_id)
 
+    reset_cache = False
     CommentForm = gallery_forms.CommentForm
     if request.method == 'POST':
         post = dict(request.POST)
@@ -118,9 +122,7 @@ def photo(request, photo_id, in_tag_name=None):
                 'referrer': request.META.get('HTTP_REFERER', ''), 
                 'comment_type': 'comment', 
                 'comment_author': post['author'],
-                'comment_author_url': post['website'],
-                
-                }
+                'comment_author_url': post['website']}
             try:
                 data['public'] = not aksmet.comment_check(data, ak_data)
             except:
@@ -133,26 +135,41 @@ def photo(request, photo_id, in_tag_name=None):
             comment = Comment(**data)
             comment.save()
             form = CommentForm()
+            reset_cache = True
         else:
             form = CommentForm(request.POST)
     else:
         form = CommentForm()
-        
-    if in_tag_name:
-        tag = Tag.with_name(in_tag_name)
-    else:
-        tag = None
-    previous = p.get_sibling_photo('previous', tag)
-    next = p.get_sibling_photo('next', tag)
-    p.increment_hit()
-    slug = '/gallery/photo/%s/' % p.id
-    params = {'tag': tag, 'photo': p, 'previous': previous, 'slug': slug,
-              'next': next, 'exported': exported, 'form': form}
-    params.update(DEFAULT_PARAMS)
-    return render_to_response('gallery/detail.html', params,
-                              context_instance=RequestContext(request))
 
-#photo = cache_page(photo, 60 * 15)
+    response = None
+    cache_key = 'photo_%s' % photo_id
+    
+    if not reset_cache:
+        response = cache.get(cache_key)
+        if not response:
+            reset_cache = True
+
+    if reset_cache or not response:
+        p = get_object_or_404(Photo, pk=photo_id)
+        exported = get_object_or_404(OriginalExport, id=photo_id)
+
+        if in_tag_name:
+            tag = Tag.with_name(in_tag_name)
+        else:
+            tag = None
+        previous = p.get_sibling_photo('previous', tag)
+        next = p.get_sibling_photo('next', tag)
+        p.increment_hit()
+        slug = '/gallery/photo/%s/' % p.id
+        params = {'tag': tag, 'photo': p, 'previous': previous,
+                  'slug': slug, 'next': next, 'exported': exported,
+                  'form': form}
+        params.update(DEFAULT_PARAMS)
+        context = RequestContext(request)
+        response = render_to_response('gallery/detail.html', params,
+                                      context_instance=context)
+        cache.set(cache_key, response, CACHE_TIMEOUT)
+    return response
 
 def photos_in_tag(request, tag_name, photo_id=None, page=None):
     if photo_id:
@@ -185,6 +202,7 @@ def photos_in_tag(request, tag_name, photo_id=None, page=None):
         params.update(DEFAULT_PARAMS)
         return render_to_response('gallery/tag.html', params,
                                   context_instance=RequestContext(request))
+photos_in_tag = cache_page(photos_in_tag, CACHE_TIMEOUT)
 
 def category(request, tag):
 
@@ -195,4 +213,4 @@ def category(request, tag):
     params.update(DEFAULT_PARAMS)    
     return render_to_response('gallery/category.html', params,
                               context_instance=RequestContext(request))
-
+category = cache_page(category, CACHE_TIMEOUT)

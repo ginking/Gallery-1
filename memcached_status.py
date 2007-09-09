@@ -9,19 +9,17 @@ def cache_status(request):
     try:
         import memcache
     except ImportError,e:
-        print e
         raise http.Http404
 
-    if not (request.user.is_authenticated() and
-            request.user.is_staff):
-        raise http.Http404
+##     if not (request.user.is_authenticated() and
+##             request.user.is_staff):
+##         raise http.Http404
 
     # get first memcached URI
     m = re.match(
         "memcached://([.\w]+:\d+)", settings.CACHE_BACKEND
     )
     if not m:
-        print 'grr'
         raise http.Http404
 
     host = memcache._Host(m.group(1))
