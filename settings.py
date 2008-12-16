@@ -6,7 +6,10 @@ GALLERY_SETTINGS={'items_by_page': 20,
                   'copyright': 'Copyright &copy; 2006, 2007',
                   'static_path': '/home/phil/devel/gallery/static',
                   'recent_photos_time': 60*60*24*14,
-                  'rel_url': '/gallery'}
+                  'rel_url': '/gallery',
+                  'akismet_api_key': 'ff5de33397bb',
+                  'blog_url':'http://elisa.fluendo.com'
+}
 
 db = { 'DATABASE_ENGINE': 'sqlite3',
        'DATABASE_NAME': '/data/scaled/db/photos.db',
