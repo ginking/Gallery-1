@@ -381,6 +381,7 @@ def scale_photo(photo_id, tmpdir):
             ret.append((kind, None))
     del pixbuf
     gc.collect()
+    os.unlink(copied_picture)
     return ret
     
 def mkdirp(uri, relpath):
