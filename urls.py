@@ -25,7 +25,7 @@ urls = [
     (r'^date/(?P<year>\d+)/(?P<month>\d+)/(?P<day>\d+)/(?P<page>\d+)/$',
      'gallery.views.date'),
     (r'^popular/$', 'gallery.views.popular'),
-    (r'^popular/(?P<tag_name>[\w\+\-]*)/$', 'gallery.views.popular'),
+    #(r'^popular/(?P<tag_name>[\w\+\-]*)/$', 'gallery.views.popular'),
     (r'^recent/$', 'gallery.views.recent'),
     (r'^recent/(?P<tag_name>[\w\+\-]*)/$', 'gallery.views.recent'),    
     (r'^recent/(?P<tag_name>[\w\+\-]*)/(?P<page>\d+)/$', 'gallery.views.recent'),    
