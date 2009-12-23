@@ -50,22 +50,20 @@ class OriginalExport(models.Model):
 
     @classmethod
     def get_random(cls, number, since=None, category_id=None):
+        cls_objects = cls.objects.using("gallery")
         if not since and not category_id:
-            objects = cls.objects.order_by('?')[:number]
+            objects = cls_objects.order_by('?')[:number]
         elif since:
             sql = 'select oe.id from original_exports oe, photos p where oe.id=p.id and p.time > %r order by random() limit %r'
-            
-            connection = OriginalExport.objects.db.connection
-            cursor = connection.cursor()
+            cursor = connections["gallery"].cursor()
             cursor.execute(sql % (float(since), int(number),))
-            objects = [cls.objects.get(id=id) for [id,] in cursor.fetchall()]
+            objects = [cls_objects.get(id=id) for [id,] in cursor.fetchall()]
         elif category_id:
             sql = 'select oe.id from original_exports oe, photo_tags pt where oe.id=pt.photo_id and pt.tag_id in (select id from tags where category_id=%r) order by random() limit %r'
-            connection = OriginalExport.objects.db.connection
-            cursor = connection.cursor()
+            cursor = connections["gallery"].cursor()
             cursor.execute(sql % (category_id, number,))
-            objects = [cls.objects.get(id=id) for [id,] in cursor.fetchall()]
-            
+            objects = [cls_objects.get(id=id) for [id,] in cursor.fetchall()]
+
         return objects
 
     def perm_url(self):
@@ -157,7 +155,7 @@ class Photo(models.Model):
         midnight = the_day + one_day
         r = (int(time.mktime(the_day.timetuple())),
              int(time.mktime(midnight.timetuple())))
-        photos = self.objects.exclude(time__gte=r[1]).filter(time__gte=r[0])
+        photos = self.objects.using("gallery").exclude(time__gte=r[1]).filter(time__gte=r[0])
         photos = photos.order_by('time')
         return photos
 
@@ -173,7 +171,7 @@ class Photo(models.Model):
             
         for addon in most_viewed:
             try:
-                photo = cls.objects.get(id=addon.photo_id)
+                photo = cls.objects.using("gallery").get(id=addon.photo_id)
             except:
                 continue
             if tag_name:
@@ -190,7 +188,7 @@ class Photo(models.Model):
     def recent(cls):
         t = settings.GALLERY_SETTINGS['recent_photos_time']
         date = int(time.time() - t)
-        photos = cls.objects.filter(time__gt=date).distinct()
+        photos = cls.objects.using("gallery").filter(time__gt=date).distinct()
         return photos
         
 
@@ -202,14 +200,14 @@ class Photo(models.Model):
                 continue
             #
             try:
-                parent_tag = Tag.objects.get(id=tag.category_id)
+                parent_tag = Tag.objects.using("gallery").get(id=tag.category_id)
             except:
                 continue
             all_tags[parent_tag.name] = parent_tag
             #import pdb; pdb.set_trace()
             while 1:
                 try:
-                    parent_tag = Tag.objects.get(id=parent_tag.category_id)
+                    parent_tag = Tag.objects.using("gallery").get(id=parent_tag.category_id)
                 except:
                     break
                 if parent_tag.photo_set.all():
@@ -246,7 +244,7 @@ class Photo(models.Model):
 
     def get_exported(self):
         if not hasattr(self, '_exported'):
-            self._exported = OriginalExport.objects.get(id=self.id)
+            self._exported = OriginalExport.objects.using("gallery").get(id=self.id)
         return self._exported
 
     def get_hits(self):
@@ -284,12 +282,11 @@ class Photo(models.Model):
                    '       order by pt.photo_id %s limit 1'
                    % (prev and '<' or '>', prev and 'desc' or 'asc'))
             
-            connection = Photo.objects.db.connection
-            cur = connection.cursor()
+            cur = connections["gallery"].cursor()
             cur.execute(sql % (tag.name, int(self.id)))
             res = cur.fetchone()
             if res:
-                photo = Photo.objects.get(id=res[0])
+                photo = Photo.objects.using("gallery").get(id=res[0])
                 photo._url = photo.url(slugify(tag.name))
         return photo
 
@@ -334,9 +331,9 @@ class Photo(models.Model):
     
 class Tag(models.Model):
     id = models.IntegerField(primary_key=True)
-    name = models.CharField(unique=True, blank=True, maxlength=255)
+    name = models.CharField(unique=True, blank=True, max_length=255)
     category_id = models.IntegerField(null=True, blank=True)
-    is_category = models.BooleanField(null=True, blank=True)
+    is_category = models.NullBooleanField(blank=True)
     sort_priority = models.IntegerField(null=True, blank=True)
     icon = models.TextField(blank=True)
     
@@ -374,7 +371,7 @@ class Tag(models.Model):
     @classmethod
     def build_set(cls, tag_combination):
         tag_names = tag_combination.split('+')
-        tags = [ t for t in list(Tag.objects.all())
+        tags = [ t for t in list(Tag.objects.using("gallery").all())
                  if slugify(t.name) in tag_names ]
         final_set = []
         for tag in tags:
@@ -383,7 +380,7 @@ class Tag(models.Model):
 
     @classmethod
     def with_name(cls, slugified):
-        tags = [ t for t in list(Tag.objects.all())
+        tags = [ t for t in list(Tag.objects.using("gallery").all())
                  if slugify(t.name) == slugified ]
         if tags:
             tag = tags[0]
@@ -408,8 +405,7 @@ class Tag(models.Model):
             for tag in containing_tags:
                sql += ' and t.name!=%r'
         sql += ' group by t.name order by t.name'
-        
-        cursor = Tag.objects.db.connection.cursor()
+        cursor = connections["gallery"].cursor()
         cursor.execute(sql, tuple(containing_tags + containing_tags))
         words = cursor.fetchall()
         if not words:
@@ -468,7 +464,7 @@ class Tag(models.Model):
     def get_recent_tags_cloud(cls):
         t = settings.GALLERY_SETTINGS['recent_photos_time']
         date = int(time.time() - t)
-        tags = Tag.objects.filter(photo__time__gt=date).distinct()
+        tags = Tag.objects.using("gallery").filter(photo__time__gt=date).distinct()
         return tags
 
     def get_sub_tags_cloud(self):
@@ -479,7 +475,7 @@ class Tag(models.Model):
 
         sql += ' group by t.name order by t.name'
 
-        cursor = Tag.objects.db.connection.cursor()
+        cursor = connections["gallery"].cursor()
         cursor.execute(sql)
         words = cursor.fetchall()
         if not words:
@@ -525,17 +521,17 @@ class Tag(models.Model):
     def get_tags(self):
         if not self.is_category:
             return []
-        return Tag.objects.filter(category_id=self.id)
+        return Tag.objects.using("gallery").filter(category_id=self.id)
     
 
 def get_root_categories():
-    return Tag.objects.filter(is_category=1, category_id=0)
+    return Tag.objects.using("gallery").filter(is_category=1, category_id=0)
 
 
 class TagAddon(models.Model):
     tag_id = models.IntegerField()
     #tag = models.ForeignKey('Tag')
-    description = models.CharField(maxlength=350)
+    description = models.CharField(max_length=350)
     
     class Admin:
         pass
@@ -547,8 +543,8 @@ class PhotoAddon(models.Model):
 class Comment(models.Model):
     photo_id = models.IntegerField(null=True, blank=True)
     comment = models.TextField()
-    author = models.CharField(maxlength=60)
-    website = models.CharField(maxlength=128, blank=True)
+    author = models.CharField(max_length=60)
+    website = models.CharField(max_length=128, blank=True)
     submit_date = models.DateTimeField(blank=True)
     is_openid = models.BooleanField(default=True)
     public = models.BooleanField(default=True)
@@ -574,4 +570,4 @@ class Comment(models.Model):
     get_absolute_url = url
 
     def photo(self):
-        return Photo.objects.get(id=self.photo_id)
+        return Photo.objects.using("gallery").get(id=self.photo_id)

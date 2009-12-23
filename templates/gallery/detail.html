@@ -58,9 +58,9 @@
 
 	 <div class="exif">
 	   {% for info in photo.get_exif_infos %}
-	     {% ifequal divmod(forloop.counter0) 0 %}
+	     {% if forloop.counter0|divisibleby:"2" %}
 	       |
-	     {% endifequal %}
+	     {% endif %}
 	     <span title="{{ info.title }}">{{ info.value }}</span>
 	   {% endfor %}
            | <a href="javascript:toggle_div('exif_table');toggle_div('exif_line');">More info</a>

@@ -1,6 +1,5 @@
 from django.http import Http404, HttpResponse, HttpResponseRedirect
-#from django import forms
-from django import newforms as forms
+from django import forms
 from django.shortcuts import render_to_response, get_object_or_404
 from gallery.models import OriginalExport, Photo, Tag, Comment
 from gallery import forms as gallery_forms
@@ -32,8 +31,9 @@ def index(request):
     recent = OriginalExport.get_random(8, since=(time.time() - t))
     recent_tags = Tag.get_recent_tags_cloud()
     params = {'random': random, 'tags': tags,
-              'recent': recent, 'recent_tags': recent_tags,
-              'openid': request.openid}
+              'recent': recent, 'recent_tags': recent_tags}
+    if hasattr(request, 'openid'):
+        params['openid'] = request.openid
     params.update(DEFAULT_PARAMS)
     return render_to_response('gallery/index.html', params,
                               context_instance=RequestContext(request))
@@ -149,8 +149,9 @@ def photo(request, photo_id, in_tag_name=None):
             reset_cache = True
 
     if reset_cache or not response:
-        p = get_object_or_404(Photo, pk=photo_id)
-        exported = get_object_or_404(OriginalExport, id=photo_id)
+        p = get_object_or_404(Photo.objects.using("gallery"), pk=photo_id)
+        exported = get_object_or_404(OriginalExport.objects.using("gallery"),
+                                     id=photo_id)
 
         if in_tag_name:
             tag = Tag.with_name(in_tag_name)

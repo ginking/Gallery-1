@@ -8,7 +8,7 @@ How to install this ?
 
      $ svn co http://code.djangoproject.com/svn/django/branches/multiple-db-support Django
 
-2. Install it :) I preferred the setup.py develop way though...
+2. Install it :)
 
    ::
 
@@ -39,11 +39,8 @@ How to install this ?
      $ cd mysite
      $ # add 'mysite.gallery' to setting.py INSTALLED_APPS
      $ # configure the gallery by editing gallery/settings.py,
-     $ # especially the db option.
+     $ # register the 'gallery' db in DATABASES
 
-   The multiple-db-support Django branch seems to have difficulties to
-   automagically install the app, so you'd need to manually do it :(
-   
    ::
 
      $ python manage.py sql gallery
