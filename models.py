@@ -127,6 +127,13 @@ class Roll(models.Model):
     def date(self):
         return datetime.date.fromtimestamp(self.time)
 
+    def tags(self):
+        tags = {}
+        for photo in self.photo_set.all():
+            photo_tags = photo.get_tags(recurse=False)
+            tags.update(dict([(t.id, t) for t in photo_tags]))
+        return tags.values()
+
 class Photo(models.Model):
     id = models.IntegerField(primary_key=True)
     time = models.IntegerField()
@@ -481,6 +488,7 @@ class Tag(models.Model):
         date = int(time.time() - t)
         tags = Tag.objects.using("gallery").filter(photo__time__gt=date).distinct()
         return tags
+
 
     def get_sub_tags_cloud(self):
         cloud = []

@@ -1,0 +1,10 @@
+{% extends "gallery/base.html" %}
+
+{% block body %}
+<div style="text-align: center;">
+<p><a href="{{ slug }}/?before={{roll.time}}" class="prevlink">older rolls</a>
+ {{ roll.date }} 
+<a href="{{ slug }}/rolls/?after={{ roll.time }}" class="nextlink">newer rolls</a></p>
+
+</div>
+{% endblock %}

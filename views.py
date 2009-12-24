@@ -17,6 +17,7 @@ DEFAULT_PARAMS={'author': settings.GALLERY_SETTINGS['author'],
                 'copyright': settings.GALLERY_SETTINGS['copyright'],
                 'rel_url': settings.GALLERY_SETTINGS['rel_url']
                 }
+G_URL=settings.GALLERY_SETTINGS['rel_url']
 
 # 10 minuts
 CACHE_TIMEOUT=60*10
@@ -60,7 +61,7 @@ def recent(request, tag_name=None, page=None):
     photos = photo_set[start:end]
     total_pages = range(nb_pages)
 
-    slug = '/gallery/recent/'
+    slug = '/%s/recent/' % G_URL
     if tag_name:
         slug += '%s/' % tag_name
 
@@ -83,7 +84,7 @@ def date(request, year, month, day, page=None):
 
     photos = photo_set[start:end]
     total_pages = range(nb_pages)
-    slug = '/gallery/date/%s/%s/%s/' % (year, month, day)
+    slug = '%s/date/%s/%s/%s/' % (G_URL, year, month, day)
 
     human_date = datetime.date(year, month, day).strftime('%A %d %B')
     
@@ -161,7 +162,7 @@ def photo(request, photo_id, in_tag_name=None):
         previous = p.get_sibling_photo('previous', tag)
         next = p.get_sibling_photo('next', tag)
         p.increment_hit()
-        slug = '/gallery/photo/%s/' % p.id
+        slug = '/%s/photo/%s/' % (G_URL, p.id)
         params = {'tag': tag, 'photo': p, 'previous': previous,
                   'slug': slug, 'next': next, 'exported': exported,
                   'form': form}
@@ -196,7 +197,7 @@ def photos_in_tag(request, tag_name, photo_id=None, page=None):
             
         photos = photo_set[start:end]
         total_pages = range(nb_pages)
-        slug = '/gallery/tag/%s/' % tag_name
+        slug = '/%s/tag/%s/' % (G_URL, tag_name)
         params = {'tag': tag, 'page': page, 'slug': slug, 'tag_name': tag_name,
                   'nb_pages': nb_pages, 'total_pages': total_pages,
                   'photos': photos}
@@ -217,9 +218,15 @@ def category(request, tag):
 category = cache_page(category, CACHE_TIMEOUT)
 
 def rolls(request):
-    rolls = get_list_or_404(Roll.objects.using("gallery").order_by('time'),
-                            )
-    print rolls[0].photo_set
+    # 10 most recent rolls
+    rolls = get_list_or_404(Roll.objects.using("gallery").order_by('-time')[:10])
     return render_to_response('gallery/rolls.html', {'rolls': rolls},
                               context_instance=RequestContext(request))
 rolls = cache_page(rolls, CACHE_TIMEOUT)
+
+def roll(request, roll_id):
+    roll = get_object_or_404(Roll.objects.using("gallery"), pk=roll_id)
+    slug = '/%s/rolls' % G_URL
+    return render_to_response('gallery/roll.html', {'roll': roll, 'slug': slug},
+                              context_instance=RequestContext(request))
+roll = cache_page(roll, CACHE_TIMEOUT)
