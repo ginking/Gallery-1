@@ -1,0 +1,22 @@
+{% extends "gallery/base.html" %}
+
+{% block body %}
+
+{% for roll in rolls %}
+<p class="roll">
+  {% for photo in roll.photo_set.all|slice:":7" %}
+       <div id="image" style="height:{{ photo.height }}px;">
+	 <a href="{{photo.url}}"
+	 <img border=0 id="preview" src="{{ photo.get_exported.normal_url }}" 
+	      height="{{ photo.height }}px;" width="{{ photo.width }}"/>
+	 </a>
+       </div>
+
+  {% endfor %}
+<a style="text-decoration: none; font-weight: bold;"
+   href="{{ roll.url }}" class="roll-title">{{ roll.date|date }}</a>
+
+</p>
+{% endfor %}
+
+{% endblock %}

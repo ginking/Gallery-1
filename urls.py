@@ -34,6 +34,8 @@ urls = [
     (r'^recent/$', 'gallery.views.recent'),
     (r'^recent/(?P<tag_name>[\w\+\-]*)/$', 'gallery.views.recent'),    
     (r'^recent/(?P<tag_name>[\w\+\-]*)/(?P<page>\d+)/$', 'gallery.views.recent'),
+    (r'^rolls/$', 'gallery.views.rolls'),
+    (r'^roll/(?P<roll_id>\d+)/$', 'gallery.views.roll'),
     ]
 
 if django_openidconsumer:

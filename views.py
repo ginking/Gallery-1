@@ -1,7 +1,8 @@
 from django.http import Http404, HttpResponse, HttpResponseRedirect
 from django import forms
-from django.shortcuts import render_to_response, get_object_or_404
-from gallery.models import OriginalExport, Photo, Tag, Comment
+from django.shortcuts import render_to_response, get_object_or_404, \
+     get_list_or_404
+from gallery.models import OriginalExport, Photo, Tag, Comment, Roll
 from gallery import forms as gallery_forms
 from gallery.utils import beautyfull_text, get_page
 from django.template import RequestContext
@@ -214,3 +215,11 @@ def category(request, tag):
     return render_to_response('gallery/category.html', params,
                               context_instance=RequestContext(request))
 category = cache_page(category, CACHE_TIMEOUT)
+
+def rolls(request):
+    rolls = get_list_or_404(Roll.objects.using("gallery").order_by('time'),
+                            )
+    print rolls[0].photo_set
+    return render_to_response('gallery/rolls.html', {'rolls': rolls},
+                              context_instance=RequestContext(request))
+rolls = cache_page(rolls, CACHE_TIMEOUT)

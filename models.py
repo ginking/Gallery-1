@@ -112,7 +112,21 @@ class PhotoTags(models.ManyToManyField):
     
     def _get_m2m_db_table(self, opts):
         return 'photo_tags'
-    
+
+class Roll(models.Model):
+    id = models.IntegerField(primary_key=True)
+    time = models.IntegerField()
+
+    class Meta:
+        db_table = 'rolls'
+
+    def url(self):
+        url = '%s/roll/%s/' % (G_URL, self.id)
+        return url
+
+    def date(self):
+        return datetime.date.fromtimestamp(self.time)
+
 class Photo(models.Model):
     id = models.IntegerField(primary_key=True)
     time = models.IntegerField()
@@ -122,7 +136,8 @@ class Photo(models.Model):
     description = models.TextField()
     default_version_id = models.IntegerField()
     tags = PhotoTags()
-    
+    roll = models.ForeignKey('Roll')
+
     class Meta:
         db_table = 'photos'
 
