@@ -9,6 +9,7 @@ from django.template import RequestContext
 from django.conf import settings
 from django.views.decorators.cache import cache_page
 from django.core.cache import cache
+from django.core.paginator import Paginator, InvalidPage, EmptyPage
 
 import datetime, time
 import akismet
@@ -217,12 +218,43 @@ def category(request, tag):
                               context_instance=RequestContext(request))
 category = cache_page(category, CACHE_TIMEOUT)
 
-def rolls(request):
-    # 10 most recent rolls
-    rolls = get_list_or_404(Roll.objects.using("gallery").order_by('-time')[:10])
-    return render_to_response('gallery/rolls.html', {'rolls': rolls},
-                              context_instance=RequestContext(request))
+def rolls(request, page=None):
+    # most recent rolls
+    rolls = get_list_or_404(Roll.objects.using("gallery").order_by('-time'))
+    paginator = Paginator(rolls, 10) # Show 10 rolls per page
+
+    if not page:
+        page = 1
+
+    # If page request (9999) is out of range, deliver last page of results.
+    try:
+        rolls = paginator.page(page)
+    except (EmptyPage, InvalidPage):
+        rolls = paginator.page(paginator.num_pages)
+
+    return render_to_response('gallery/rolls.html', {'rolls': rolls})
 rolls = cache_page(rolls, CACHE_TIMEOUT)
+
+def rolls_by_time(request, before=None, after=None):
+    Rolls = Roll.objects.using("gallery")
+    if before:
+        qset = Rolls.filter(time__lte=before)
+    else:
+        if after:
+            qset = Rolls.filter(time__gte=after)
+        else:
+            raise Http404
+    rolls = get_list_or_404(qset.order_by('-time'))
+    ## next_roll = None
+    ## prev_roll = None
+    ## if roll:
+    ##     prev_roll = Rolls.get(id=roll.id-1)
+    ##     next_roll = Rolls.get(id=roll.id+1)
+
+    ## return render_to_response('gallery/rolls.html',
+    ##                           {'roll': roll, 'next_roll': next_roll,
+    ##                            'prev_roll': prev_roll})
+rolls = cache_page(rolls_by_time, CACHE_TIMEOUT)
 
 def roll(request, roll_id):
     roll = get_object_or_404(Roll.objects.using("gallery"), pk=roll_id)

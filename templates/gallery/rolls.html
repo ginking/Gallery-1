@@ -2,7 +2,7 @@
 
 {% block body %}
 
-{% for roll in rolls %}
+{% for roll in rolls.object_list %}
 <p class="roll">
   {% for photo in roll.photo_set.all|slice:":7" %}
       {% ifequal forloop.counter0 0 %}
@@ -21,4 +21,19 @@
 </p>
 {% endfor %}
 
+<div class="pagination">
+    <span class="step-links">
+        {% if rolls.has_previous %}
+            <a href="?page={{ rolls.previous_page_number }}">previous</a>
+        {% endif %}
+
+        <span class="current">
+            Page {{ rolls.number }} of {{ rolls.paginator.num_pages }}.
+        </span>
+
+        {% if rolls.has_next %}
+            <a href="?page={{ rolls.next_page_number }}">next</a>
+        {% endif %}
+    </span>
+</div>
 {% endblock %}

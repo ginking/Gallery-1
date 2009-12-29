@@ -34,7 +34,9 @@ urls = [
     (r'^recent/$', 'gallery.views.recent'),
     (r'^recent/(?P<tag_name>[\w\+\-]*)/$', 'gallery.views.recent'),    
     (r'^recent/(?P<tag_name>[\w\+\-]*)/(?P<page>\d+)/$', 'gallery.views.recent'),
-    (r'^rolls/$', 'gallery.views.rolls'),
+    (r'^rolls/(?P<page>\?page=\d+)?$', 'gallery.views.rolls'),
+    (r'^rolls/(?P<time>\?before=\d+)?$', 'gallery.views.rolls_by_time'),
+    (r'^rolls/(?P<time>\?after=\d+)?$', 'gallery.views.rolls_by_time'),
     (r'^roll/(?P<roll_id>\d+)/$', 'gallery.views.roll'),
     ]
 
