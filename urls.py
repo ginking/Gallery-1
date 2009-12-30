@@ -22,7 +22,7 @@ urls = [
     (r'^tag/(?P<tag_name>[\w\+\-]*)/$', 'gallery.views.photos_in_tag'),
     (r'^tag/(?P<tag_name>[\w\+\-]*)/(?P<page>\d+)/$',
      'gallery.views.photos_in_tag'),
-    (r'^photo/(?P<photo_id>\d+)/(?P<roll>\d+)/$',
+    (r'^photo/(?P<photo_id>\d+)/(?P<roll_id>\d+)/$',
      'gallery.views.photos_in_roll'),
     (r'^photo/(?P<photo_id>\d+)/(?P<tag_name>[\w\-]*)/$',
      'gallery.views.photos_in_tag'),
