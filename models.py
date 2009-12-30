@@ -306,10 +306,8 @@ class Photo(models.Model):
                    % (prev and '<' or '>', prev and 'desc' or 'asc'))
             sql = sql % (tag.name, int(self.id))
         elif roll_id:
-            sql = ('select p.id from photos'
-                   '       where photos.roll_id=%%d'
-                   '       and photos.id %s %%d '
-                   '       order by photos.id %s limit 1'
+            sql = ('select id from photos where roll_id=%%d'
+                   '       and id %s %%d order by id %s limit 1'
                    % (prev and '<' or '>', prev and 'desc' or 'asc'))
             sql = sql % (int(roll_id), int(self.id))
         if sql:
