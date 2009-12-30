@@ -293,19 +293,28 @@ class Photo(models.Model):
             addon.hits += 1
         addon.save()
         
-    def get_sibling_photo(self, direction, tag):
+    def get_sibling_photo(self, direction, tag=None, roll_id=None):
         photo = None
+        prev = direction == 'previous'
+        sql = ''
         if tag:
-            prev = direction == 'previous'
             sql = ('select pt.photo_id from '
                    '       tags t, photo_tags pt'
                    '       where t.id=pt.tag_id'
                    '       and t.name="%%s" and pt.photo_id %s %%d '
                    '       order by pt.photo_id %s limit 1'
                    % (prev and '<' or '>', prev and 'desc' or 'asc'))
-            
+            sql = sql % (tag.name, int(self.id))
+        elif roll_id:
+            sql = ('select p.id from photos'
+                   '       where photos.roll_id=%%d'
+                   '       and photos.id %s %%d '
+                   '       order by photos.id %s limit 1'
+                   % (prev and '<' or '>', prev and 'desc' or 'asc'))
+            sql = sql % (int(roll_id), int(self.id))
+        if sql:
             cur = connections["gallery"].cursor()
-            cur.execute(sql % (tag.name, int(self.id)))
+            cur.execute(sql)
             res = cur.fetchone()
             if res:
                 photo = Photo.objects.using("gallery").get(id=res[0])

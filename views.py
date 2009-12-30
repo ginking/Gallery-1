@@ -156,12 +156,16 @@ def photo(request, photo_id, in_tag_name=None, in_roll_id=None):
         exported = get_object_or_404(OriginalExport.objects.using("gallery"),
                                      id=photo_id)
 
+        tag = None
         if in_tag_name:
             tag = Tag.with_name(in_tag_name)
+            kw = dict(tag=tag)
+        elif in_roll_id:
+            kw = dict(roll_id=in_roll_id)
         else:
-            tag = None
-        previous = p.get_sibling_photo('previous', tag)
-        next = p.get_sibling_photo('next', tag)
+            kw = {}
+        previous = p.get_sibling_photo('previous', **kw)
+        next = p.get_sibling_photo('next', **kw)
         p.increment_hit()
         slug = '/%s/photo/%s/' % (G_URL, p.id)
         params = {'tag': tag, 'photo': p, 'previous': previous,
