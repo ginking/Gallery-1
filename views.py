@@ -99,7 +99,7 @@ def date(request, year, month, day, page=None):
                               context_instance=RequestContext(request))
 date = cache_page(date, CACHE_TIMEOUT)
 
-def photo(request, photo_id, in_tag_name=None):
+def photo(request, photo_id, in_tag_name=None, in_roll_id=None):
 
     reset_cache = False
     CommentForm = gallery_forms.CommentForm
@@ -176,7 +176,7 @@ def photo(request, photo_id, in_tag_name=None):
 
 def photos_in_tag(request, tag_name, photo_id=None, page=None):
     if photo_id:
-        return photo(request, photo_id, tag_name)
+        return photo(request, photo_id, in_tag_name=tag_name)
     else:
         if tag_name.find('+') > -1:
             # combination of tags
@@ -207,6 +207,10 @@ def photos_in_tag(request, tag_name, photo_id=None, page=None):
                                   context_instance=RequestContext(request))
 photos_in_tag = cache_page(photos_in_tag, CACHE_TIMEOUT)
 
+def photos_in_roll(request, photo_id=None, roll_id=None):
+    return photo(request, photo_id, in_roll_id=roll_id)
+photos_in_roll = cache_page(photos_in_roll, CACHE_TIMEOUT)
+
 def category(request, tag):
 
     params = {'tags': tag.get_sub_tags_cloud(),
@@ -218,47 +222,51 @@ def category(request, tag):
                               context_instance=RequestContext(request))
 category = cache_page(category, CACHE_TIMEOUT)
 
-def rolls(request, page=None):
-    # most recent rolls
-    rolls = get_list_or_404(Roll.objects.using("gallery").order_by('-time'))
-    paginator = Paginator(rolls, 10) # Show 10 rolls per page
+def rolls(request):
+    slug = ''
+    Rolls = Roll.objects.using("gallery")
 
-    if not page:
+    qset = Rolls
+
+    # Make sure page request is an int. If not, deliver first page.
+    try:
+        page = int(request.GET.get('page', '1'))
+    except ValueError:
+        page = 0
+
+    before = request.GET.get('before')
+    after = request.GET.get('after')
+
+    if before:
+        qset = Rolls.filter(time__lt=before)
+        slug = "&before=%s" % before
+    elif after:
+        qset = Rolls.filter(time__gt=after)
+        slug += "&after=%s" % after
+    elif not page:
         page = 1
 
-    # If page request (9999) is out of range, deliver last page of results.
-    try:
-        rolls = paginator.page(page)
-    except (EmptyPage, InvalidPage):
-        rolls = paginator.page(paginator.num_pages)
+    if page:
+        rolls = get_list_or_404(qset.order_by('-time'))
+        paginator = Paginator(rolls, 10) # Show 10 rolls per page
 
-    return render_to_response('gallery/rolls.html', {'rolls': rolls})
-rolls = cache_page(rolls, CACHE_TIMEOUT)
-
-def rolls_by_time(request, before=None, after=None):
-    Rolls = Roll.objects.using("gallery")
-    if before:
-        qset = Rolls.filter(time__lte=before)
+        # If page request (9999) is out of range, deliver last page of results.
+        try:
+            rolls = paginator.page(page)
+        except (EmptyPage, InvalidPage):
+            rolls = paginator.page(paginator.num_pages)
     else:
-        if after:
-            qset = Rolls.filter(time__gte=after)
-        else:
-            raise Http404
-    rolls = get_list_or_404(qset.order_by('-time'))
-    ## next_roll = None
-    ## prev_roll = None
-    ## if roll:
-    ##     prev_roll = Rolls.get(id=roll.id-1)
-    ##     next_roll = Rolls.get(id=roll.id+1)
+        rolls = get_list_or_404(qset.order_by('-time')[:10])
 
-    ## return render_to_response('gallery/rolls.html',
-    ##                           {'roll': roll, 'next_roll': next_roll,
-    ##                            'prev_roll': prev_roll})
-rolls = cache_page(rolls_by_time, CACHE_TIMEOUT)
+    params = {'rolls': rolls, 'slug_foot': slug}
+    params.update(DEFAULT_PARAMS)
+    return render_to_response('gallery/rolls.html', params)
+rolls = cache_page(rolls, CACHE_TIMEOUT)
 
 def roll(request, roll_id):
     roll = get_object_or_404(Roll.objects.using("gallery"), pk=roll_id)
-    slug = '/%s/rolls' % G_URL
-    return render_to_response('gallery/roll.html', {'roll': roll, 'slug': slug},
-                              context_instance=RequestContext(request))
+    slug = '%s/rolls' % G_URL
+    params = {'roll': roll, 'slug': slug}
+    params.update(DEFAULT_PARAMS)
+    return render_to_response('gallery/roll.html', params)
 roll = cache_page(roll, CACHE_TIMEOUT)

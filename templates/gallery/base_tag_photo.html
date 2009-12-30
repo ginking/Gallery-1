@@ -25,7 +25,6 @@
 	: {{ tag.get_description }}
 	{% endif %}
       </a></span>
-      
       <span>&gt;<a href="{{ tag.popular_url }}"> Popular</a>
       </span>
 
@@ -35,6 +34,16 @@
 	<input type="text" value="{{ tag_name }}" />
       {% endif %}
 -->
+
+      {% if rolls %}
+      <span>&gt;<a href="/gallery/rolls">Rolls</a></span>
+      {% endif %}
+
+      {% if roll %}
+      <span>&gt;<a href="/gallery/rolls">Rolls</a></span>
+      <span>&gt;Roll {{ roll.id }}</span>
+      {% endif %}
+
     {% endif %}
 
     {% if photo.id %}

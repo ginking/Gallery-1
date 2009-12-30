@@ -22,6 +22,8 @@ urls = [
     (r'^tag/(?P<tag_name>[\w\+\-]*)/$', 'gallery.views.photos_in_tag'),
     (r'^tag/(?P<tag_name>[\w\+\-]*)/(?P<page>\d+)/$',
      'gallery.views.photos_in_tag'),
+    (r'^photo/(?P<photo_id>\d+)/(?P<roll>\d+)/$',
+     'gallery.views.photos_in_roll'),
     (r'^photo/(?P<photo_id>\d+)/(?P<tag_name>[\w\-]*)/$',
      'gallery.views.photos_in_tag'),
     (r'^photo/(?P<photo_id>\d+)/$', 'gallery.views.photo'),
@@ -34,9 +36,7 @@ urls = [
     (r'^recent/$', 'gallery.views.recent'),
     (r'^recent/(?P<tag_name>[\w\+\-]*)/$', 'gallery.views.recent'),    
     (r'^recent/(?P<tag_name>[\w\+\-]*)/(?P<page>\d+)/$', 'gallery.views.recent'),
-    (r'^rolls/(?P<page>\?page=\d+)?$', 'gallery.views.rolls'),
-    (r'^rolls/(?P<time>\?before=\d+)?$', 'gallery.views.rolls_by_time'),
-    (r'^rolls/(?P<time>\?after=\d+)?$', 'gallery.views.rolls_by_time'),
+    (r'^rolls/$', 'gallery.views.rolls'),
     (r'^roll/(?P<roll_id>\d+)/$', 'gallery.views.roll'),
     ]
 
