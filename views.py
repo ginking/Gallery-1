@@ -157,11 +157,13 @@ def photo(request, photo_id, in_tag_name=None, in_roll_id=None):
                                      id=photo_id)
 
         tag = None
+        roll = None
         if in_tag_name:
             tag = Tag.with_name(in_tag_name)
             kw = dict(tag=tag)
         elif in_roll_id:
             kw = dict(roll_id=in_roll_id)
+            roll = get_object_or_404(Roll.objects.using("gallery"), pk=in_roll_id)
         else:
             kw = {}
         previous = p.get_sibling_photo('previous', **kw)
@@ -170,7 +172,7 @@ def photo(request, photo_id, in_tag_name=None, in_roll_id=None):
         slug = '/%s/photo/%s/' % (G_URL, p.id)
         params = {'tag': tag, 'photo': p, 'previous': previous,
                   'slug': slug, 'next': next, 'exported': exported,
-                  'form': form}
+                  'form': form, 'roll': roll}
         params.update(DEFAULT_PARAMS)
         context = RequestContext(request)
         response = render_to_response('gallery/detail.html', params,

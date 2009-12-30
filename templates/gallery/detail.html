@@ -38,6 +38,9 @@
 	   {{photo.get_hits}} hits.
 	   {% endifnotequal %}
 	   Taken on <a href="{{photo.same_day_url}}">{{photo.get_date}}</a><br/>
+	   {% if roll %}
+	   <a href="{{ roll.url }}">Roll {{ roll.id }}</a><br/>
+	     {% endif %}
 	   Tags:
 	   {% for tag in photo.get_tags %}
 	   <a href="{{tag.url}}">{{tag.name}}</a>
