@@ -316,7 +316,10 @@ class Photo(models.Model):
             res = cur.fetchone()
             if res:
                 photo = Photo.objects.using("gallery").get(id=res[0])
-                photo._url = photo.url(slugify(tag.name))
+                if tag:
+                    photo._url = photo.url(slugify(tag.name))
+                else:
+                    photo._url = photo.url(roll_id)
         return photo
 
     def height(self):
