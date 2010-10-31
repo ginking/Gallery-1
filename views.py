@@ -194,7 +194,7 @@ def photos_in_tag(request, tag_name, photo_id=None, page=None):
             if not tag:
                 raise Http404
             else:
-                photo_set = tag.photo_set.all()
+                photo_set = tag.photo_set.order_by('time')
 
         if len(photo_set) == 0:
             return category(request, tag)
@@ -204,7 +204,7 @@ def photos_in_tag(request, tag_name, photo_id=None, page=None):
             
         photos = photo_set[start:end]
         total_pages = range(nb_pages)
-        slug = '/%s/tag/%s/' % (G_URL, tag_name)
+        slug = '%s/tag/%s/' % (G_URL, tag_name)
         params = {'tag': tag, 'page': page, 'slug': slug, 'tag_name': tag_name,
                   'nb_pages': nb_pages, 'total_pages': total_pages,
                   'photos': photos}
