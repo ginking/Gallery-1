@@ -147,6 +147,7 @@ class Photo(models.Model):
 
     class Meta:
         db_table = 'photos'
+        ordering = ['time',]
 
     def __str__(self):
         if self.description:
@@ -299,17 +300,17 @@ class Photo(models.Model):
         sql = ''
         if tag:
             sql = ('select pt.photo_id from '
-                   '       tags t, photo_tags pt'
-                   '       where t.id=pt.tag_id'
-                   '       and t.name="%%s" and pt.photo_id %s %%d '
-                   '       order by pt.photo_id %s limit 1'
+                   '       tags t, photo_tags pt, photos p'
+                   '       where t.id=pt.tag_id and pt.photo_id=p.id'
+                   '       and t.name="%%s" and p.time %s %%d '
+                   '       order by p.time %s limit 1'
                    % (prev and '<' or '>', prev and 'desc' or 'asc'))
-            sql = sql % (tag.name, int(self.id))
+            sql = sql % (tag.name, int(self.time))
         elif roll_id:
             sql = ('select id from photos where roll_id=%%d'
-                   '       and id %s %%d order by id %s limit 1'
+                   '       and time %s %%d order by time %s limit 1'
                    % (prev and '<' or '>', prev and 'desc' or 'asc'))
-            sql = sql % (int(roll_id), int(self.id))
+            sql = sql % (int(roll_id), int(self.time))
         if sql:
             cur = connections["gallery"].cursor()
             cur.execute(sql)
