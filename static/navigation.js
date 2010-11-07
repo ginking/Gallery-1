@@ -15,7 +15,10 @@ function Navigate(key)
 function nav(direction)
 {
    if (direction == -1)
-       return document.getElementById("previousphoto");
+       url = document.getElementById("previousphoto");
    else
-       return document.getElementById("nextphoto");
+       url = document.getElementById("nextphoto");
+   if (!url)
+       url = window.location.href;
+   return url;
 }
