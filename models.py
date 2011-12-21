@@ -12,7 +12,13 @@ import os, Image
 import EXIF
 
 G_URL=settings.GALLERY_SETTINGS['rel_url']
+G_PORT=settings.GALLERY_SETTINGS.get('port')
 SITE=Site.objects.get_current()
+
+if G_PORT:
+    SITE_URL = 'http://%s:%s%s' % (SITE, G_PORT, G_URL)
+else:
+    SITE_URL = 'http://%s%s' % (SITE, G_URL)
 
 ## class Import(models.Model):
 ##     id = models.IntegerField(primary_key=True)
@@ -34,8 +40,8 @@ class OriginalExport(models.Model):
     mq_relpath = models.TextField() # This field type is a guess.
     hq_relpath = models.TextField() # This field type is a guess.
 
-    media_url = 'http://%s%s/media/' % (SITE, G_URL)
-    
+    media_url = '%s/media/' % SITE_URL
+
     class Meta:
         db_table = 'original_exports'
 
