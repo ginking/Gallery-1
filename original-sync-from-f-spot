@@ -298,6 +298,7 @@ def scale_photo(photo_id, tmpdir):
                 'photos where id=%d' % (photo_id,))
     base_uri, filename, version_id = cur.fetchone()
     filename = urlparse.unquote(filename)
+    base_uri = urlparse.unquote(base_uri)
     path = os.path.join(base_uri, filename)
     path = path[7:]
     basename = encode(os.path.basename(path))
