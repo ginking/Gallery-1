@@ -10,7 +10,7 @@ import optparse
 import tempfile
 import shutil
 from pysqlite2 import dbapi2 as sqlite
-
+import urlparse
 import gnomevfs
 import gobject
 import gtk
@@ -297,7 +297,8 @@ def scale_photo(photo_id, tmpdir):
     cur.execute('select base_uri, filename, default_version_id from '\
                 'photos where id=%d' % (photo_id,))
     base_uri, filename, version_id = cur.fetchone()
-    path = "%s%s" % (base_uri, filename)
+    filename = urlparse.unquote(filename)
+    path = os.path.join(base_uri, filename)
     path = path[7:]
     basename = encode(os.path.basename(path))
     dirname = encode(os.path.dirname(path))
@@ -306,7 +307,7 @@ def scale_photo(photo_id, tmpdir):
     if version_id > 1:
         cur.execute('select base_uri, filename from photo_versions where photo_id=%d' % photo_id)
         base_uri, filename = cur.fetchone()
-        path = "%s%s" % (base_uri, filename)
+        path = os.path.join(base_uri, filename)
         path = path[7:]
 ##         basename, ext = os.path.splitext(basename)
 ##         basename = '%s (%s)%s' % (basename, version_name, ext)
