@@ -8,7 +8,7 @@ class Photos(Feed):
     description = title
 
     def items(self):
-        return Photo.objects.order_by('-time')[:15]
+        return Photo.objects.using("gallery").order_by('-timestamp')[:15]
 
 class Tags(Feed):
     title = "Tags recently updated"
@@ -35,7 +35,7 @@ class PhotosByTag(Feed):
         return "Photos recently registered under tag %s" % obj.name
 
     def items(self, obj):
-        return obj.photo_set.order_by('-time')[:15]
+        return obj.photo_set.order_by('-timestamp')[:15]
 
 class Comments(Feed):
     title = "Recent comments"
