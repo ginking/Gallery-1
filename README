@@ -2,20 +2,8 @@
 How to install this ?
 =====================
 
-1. Checkout multiple-db-support Django branch:
-
-   ::
-
-     $ svn co http://code.djangoproject.com/svn/django/branches/multiple-db-support Django
-
-2. Install it :)
-
-   ::
-
-     $ cd Django
-     $ python setup.py install
-
-3. Start a new project and configure it:
+1. Install Django :)
+2. Start a new project and configure it:
 
    ::
 
@@ -25,12 +13,12 @@ How to install this ?
          sqlite db :)
      $ python manage.py syncdb
 
-4. Activate the admin interface, see
+3. Activate the admin interface, see
    http://www.djangoproject.com/documentation/tutorial2/ and configure
    your site'url
 
 
-5. Now you have a Django site, you can install the Gallery application
+4. Now you have a Django site, you can install the Gallery application
 
    ::
 
@@ -55,7 +43,7 @@ How to install this ?
      sqlite> # create table gallery_tagaddon gallery_photoaddon and
                gallery_comment
 
-6. Now you need to bind the gallery's urls to your django site:
+5. Now you need to bind the gallery's urls to your django site:
 
    ::
    
@@ -69,11 +57,11 @@ How to install this ?
    application.
 
 
-7. Start the testing server
+6. Start the testing server
 
    ::
 
      $ python manage.py runserver
 
 
-8. Enjoy :)
+7. Enjoy :)
