@@ -16,7 +16,6 @@ feeds = {
 
 urls = [
     (r'^$', 'gallery.views.index'),
-    (r'^xmlrpc/$', 'gallery.xmlrpchandler.rpc_handler'),
     (r'^feeds/(?P<url>.*)/$',
      'django.contrib.syndication.views.feed', {'feed_dict': feeds}),
     (r'^tag/(?P<tag_name>[\w\+\-]*)/$', 'gallery.views.photos_in_tag'),
