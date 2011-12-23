@@ -21,8 +21,8 @@ urls = [
     (r'^tag/(?P<tag_name>[\w\+\-]*)/$', 'gallery.views.photos_in_tag'),
     (r'^tag/(?P<tag_name>[\w\+\-]*)/(?P<page>\d+)/$',
      'gallery.views.photos_in_tag'),
-    (r'^photo/(?P<photo_id>\d+)/(?P<roll_id>\d+)/$',
-     'gallery.views.photos_in_roll'),
+    (r'^photo/(?P<photo_id>\d+)/(?P<event_id>\d+)/$',
+     'gallery.views.photos_in_event'),
     (r'^photo/(?P<photo_id>\d+)/(?P<tag_name>[\w\-]*)/$',
      'gallery.views.photos_in_tag'),
     (r'^photo/(?P<photo_id>\d+)/$', 'gallery.views.photo'),
@@ -35,8 +35,8 @@ urls = [
     (r'^recent/$', 'gallery.views.recent'),
     (r'^recent/(?P<tag_name>[\w\+\-]*)/$', 'gallery.views.recent'),    
     (r'^recent/(?P<tag_name>[\w\+\-]*)/(?P<page>\d+)/$', 'gallery.views.recent'),
-    (r'^rolls/$', 'gallery.views.rolls'),
-    (r'^roll/(?P<roll_id>\d+)/$', 'gallery.views.roll'),
+    (r'^events/$', 'gallery.views.events'),
+    (r'^event/(?P<event_id>\d+)/$', 'gallery.views.event'),
     ]
 
 if django_openidconsumer:

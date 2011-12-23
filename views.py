@@ -2,7 +2,7 @@ from django.http import Http404, HttpResponse, HttpResponseRedirect
 from django import forms
 from django.shortcuts import render_to_response, get_object_or_404, \
      get_list_or_404
-from gallery.models import OriginalExport, Photo, Tag, Comment, Roll
+from gallery.models import OriginalExport, Photo, Tag, Comment, Event
 from gallery import forms as gallery_forms
 from gallery.utils import beautyfull_text, get_page
 from django.template import RequestContext
@@ -99,7 +99,7 @@ def date(request, year, month, day, page=None):
                               context_instance=RequestContext(request))
 date = cache_page(date, CACHE_TIMEOUT)
 
-def photo(request, photo_id, in_tag_name=None, in_roll_id=None):
+def photo(request, photo_id, in_tag_name=None, in_event_id=None):
 
     reset_cache = False
     CommentForm = gallery_forms.CommentForm
@@ -157,13 +157,13 @@ def photo(request, photo_id, in_tag_name=None, in_roll_id=None):
                                      id=photo_id)
 
         tag = None
-        roll = None
+        event = None
         if in_tag_name:
             tag = Tag.with_name(in_tag_name)
             kw = dict(tag=tag)
-        elif in_roll_id:
-            kw = dict(roll_id=in_roll_id)
-            roll = get_object_or_404(Roll.objects.using("gallery"), pk=in_roll_id)
+        elif in_event_id:
+            kw = dict(event_id=in_event_id)
+            event = get_object_or_404(Event.objects.using("gallery"), pk=in_event_id)
         else:
             kw = {}
         previous = p.get_sibling_photo('previous', **kw)
@@ -172,7 +172,7 @@ def photo(request, photo_id, in_tag_name=None, in_roll_id=None):
         slug = '/%s/photo/%s/' % (G_URL, p.id)
         params = {'tag': tag, 'photo': p, 'previous': previous,
                   'slug': slug, 'next': next, 'exported': exported,
-                  'form': form, 'roll': roll}
+                  'form': form, 'event': event}
         params.update(DEFAULT_PARAMS)
         context = RequestContext(request)
         response = render_to_response('gallery/detail.html', params,
@@ -194,14 +194,11 @@ def photos_in_tag(request, tag_name, photo_id=None, page=None):
             if not tag:
                 raise Http404
             else:
-                photo_set = tag.photo_set.order_by('time')
-
-        if len(photo_set) == 0:
-            return category(request, tag)
+                photo_set = tag.photo_set.order_by('timestamp')
 
         total = len(photo_set)
         page, start, end, nb_pages = get_page(page, total)
-            
+
         photos = photo_set[start:end]
         total_pages = range(nb_pages)
         slug = '%s/tag/%s/' % (G_URL, tag_name)
@@ -213,66 +210,55 @@ def photos_in_tag(request, tag_name, photo_id=None, page=None):
                                   context_instance=RequestContext(request))
 photos_in_tag = cache_page(photos_in_tag, CACHE_TIMEOUT)
 
-def photos_in_roll(request, photo_id=None, roll_id=None):
-    return photo(request, photo_id, in_roll_id=roll_id)
-photos_in_roll = cache_page(photos_in_roll, CACHE_TIMEOUT)
+def photos_in_event(request, photo_id=None, event_id=None):
+    return photo(request, photo_id, in_event_id=event_id)
+photos_in_event = cache_page(photos_in_event, CACHE_TIMEOUT)
 
-def category(request, tag):
-
-    params = {'tags': tag.get_sub_tags_cloud(),
-              'tag': tag,
-              'random': OriginalExport.get_random(10, category_id=tag.id)
-              }
-    params.update(DEFAULT_PARAMS)    
-    return render_to_response('gallery/category.html', params,
-                              context_instance=RequestContext(request))
-category = cache_page(category, CACHE_TIMEOUT)
-
-def rolls(request):
+def events(request):
     slug = ''
-    Rolls = Roll.objects.using("gallery")
+    Events = Event.objects.using("gallery")
 
-    qset = Rolls
+    qset = Events
 
     # Make sure page request is an int. If not, deliver first page.
     try:
         page = int(request.GET.get('page', '1'))
     except ValueError:
         page = 0
-
     before = request.GET.get('before')
     after = request.GET.get('after')
 
     if before:
-        qset = Rolls.filter(time__lt=before)
+        qset = Events.filter(time_created__lt=before)
         slug = "&before=%s" % before
     elif after:
-        qset = Rolls.filter(time__gt=after)
+        qset = Events.filter(time_created__gt=after)
         slug += "&after=%s" % after
     elif not page:
         page = 1
 
     if page:
-        rolls = get_list_or_404(qset.order_by('-time'))
-        paginator = Paginator(rolls, 10) # Show 10 rolls per page
+        events = get_list_or_404(qset.order_by('-time_created'))
+        paginator = Paginator(events, 10) # Show 10 events per page
 
         # If page request (9999) is out of range, deliver last page of results.
         try:
-            rolls = paginator.page(page)
+            events = paginator.page(page)
         except (EmptyPage, InvalidPage):
-            rolls = paginator.page(paginator.num_pages)
+            events = paginator.page(paginator.num_pages)
     else:
-        rolls = get_list_or_404(qset.order_by('-time')[:10])
+        events = get_list_or_404(qset.order_by('-time_created')[:10])
 
-    params = {'rolls': rolls, 'slug_foot': slug}
+    params = {'events': events, 'slug_foot': slug}
     params.update(DEFAULT_PARAMS)
-    return render_to_response('gallery/rolls.html', params)
-rolls = cache_page(rolls, CACHE_TIMEOUT)
+    return render_to_response('gallery/events.html', params)
+events = cache_page(events, CACHE_TIMEOUT)
 
-def roll(request, roll_id):
-    roll = get_object_or_404(Roll.objects.using("gallery"), pk=roll_id)
-    slug = '%s/rolls' % G_URL
-    params = {'roll': roll, 'slug': slug}
+def event(request, event_id):
+    event = get_object_or_404(Event.objects.using("gallery"), pk=event_id)
+    slug = '%s/events' % G_URL
+    params = {'event': event, 'slug': slug}
     params.update(DEFAULT_PARAMS)
-    return render_to_response('gallery/roll.html', params)
-roll = cache_page(roll, CACHE_TIMEOUT)
+    return render_to_response('gallery/event.html', params)
+event = cache_page(event, CACHE_TIMEOUT)
+

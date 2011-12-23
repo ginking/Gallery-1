@@ -2,10 +2,10 @@
 
 {% block in_body %}
 
-<div id="image" style="height:{{ photo.height }}px;">
+<div id="image" style="height:{{ exported.normal_height }}px;">
   <a href="{{photo.url}}">
-    <img border=0 id="preview" src="{{ exported.normal_url }}" 
-	 height="{{ photo.height }}px;" width="{{ photo.width }}"/>
+    <img border=0 id="preview" src="{{ exported.normal_url }}"
+         height="{{ exported.normal_height }}px;" width="{{ exported.normal_width }}px"/>
   </a>
 </div>
 

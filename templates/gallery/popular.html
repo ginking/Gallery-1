@@ -4,11 +4,12 @@
 
 
 {% for photo in photos %}
-       <div id="image" style="height:{{ photo.height }}px;">
-	 <a href="{{photo.url}}"
-	 <img border=0 id="preview" src="{{ photo.get_exported.normal_url }}" 
-	      height="{{ photo.height }}px;" width="{{ photo.width }}"/>
-	 </a>
+       <div id="image" style="height:{{ photo.get_exported.normal_height }}px;">
+         <a href="{{photo.url}}"
+         <img border=0 id="preview" src="{{ photo.get_exported.normal_url }}"
+              height="{{ photo.get_exported.normal_height }}px;"
+              width="{{ photo.get_exported.normal_width }}px"/>
+         </a>
        </div>
          {{photo}}: {{photo.hits}}
 

@@ -1,0 +1,40 @@
+{% extends "gallery/base_tag_photo.html" %}
+
+{% block in_body %}
+
+{% for event in events.object_list %}
+<p class="event">
+  <div class="event-photos">
+  {% for photo in event.photo_set.all|slice:":7" %}
+      {% ifequal forloop.counter0 0 %}
+<a style="text-decoration: none; font-weight: bold;"
+   href="{{ event.url }}" class="event-title">{{ event.name }}</a>
+     <br/>
+      {% endifequal %}
+     <a href="{{ photo.url }}{{ event.id }}"><img src="{{ photo.get_exported.thumb_url }}"></img></a>
+  {% endfor %}
+  </div>
+  <div class="event-tags">
+  {% for tag in event.tags %}
+      <a href="{{tag.url}}">{{tag.human_name}}</a>
+  {% endfor %}
+  </div>
+</p>
+{% endfor %}
+
+<div class="pagination">
+    <span class="step-links">
+        {% if events.has_previous %}
+            <a href="?page={{ events.previous_page_number }}{{slug_foot}}">previous</a>
+        {% endif %}
+
+        <span class="current">
+            Page {{ events.number }} of {{ events.paginator.num_pages }}
+        </span>
+
+        {% if events.has_next %}
+            <a href="?page={{ events.next_page_number }}{{slug_foot}}">next</a>
+        {% endif %}
+    </span>
+</div>
+{% endblock %}
