@@ -1,8 +1,9 @@
 
 - search engine?
 - rst formatting support in comments
-- semi-private tags (using a cookie)
+- semi-private tags/events (using a cookie)
 - videos
+- migrate sync script from gnomevfs to gio
 
 - design:
 
