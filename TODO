@@ -3,7 +3,6 @@
 - rst formatting support in comments
 - semi-private tags/events (using a cookie)
 - videos
-- migrate sync script from gnomevfs to gio
 - slideshow support
 
 - design:

@@ -4,18 +4,15 @@ from __future__ import division
 
 import sys
 import os
-import os.path
 import gc
 import optparse
 import tempfile
 import shutil
-from pysqlite2 import dbapi2 as sqlite
-import urlparse
-import gnomevfs
-import gobject
-import gtk
-from gtk import gdk
 import EXIF, time
+import traceback
+
+from pysqlite2 import dbapi2 as sqlite
+from gtk import gdk
 
 SHOTWELL_DB = os.path.expanduser("~/.shotwell/data/photo.db")
 VERSION = 0.1
@@ -24,7 +21,7 @@ jhead_available = True
 
 options = None
 cxn = sqlite.connect(SHOTWELL_DB)
-output_uri = None
+output_path = None
 
 # square thumbnail size in pixels
 THUMB_SIZE=100
@@ -75,58 +72,49 @@ def ensure_original_in_shotwell():
                     "   data string"
                     ")")
         cxn.commit()
-        ## cur.execute("select data from original_options where name='original_db_version'")
-        ## res = cur.fetchall()
-        ## if not res:
         cur.execute("insert into original_options (name, data) "
                     "values('original_db_version', '1')")
-        ## cur.execute("update original_options set data='1' where name='original_db_version'")
-        cur.execute("insert into original_options (name, data) values('original_output_uri', '')")
         cxn.commit()
 
     if options.resync:
         cur.execute("delete from original_exports")
         cxn.commit()
 
-def ensure_output_uri_set():
-    global output_uri
+def ensure_output_path_set():
+    global output_path
     cur = cxn.cursor()
-    cur.execute("select data from original_options where name='original_output_uri'")
-    uri, = cur.fetchone()
+    cur.execute("select data from original_options where name='original_output_path'")
+    try:
+        uri, = cur.fetchone()
+    except:
+        uri = None
     if not uri:
-        if not options.output_uri:
+        if not options.output_path:
             err('This appears to be the first time you run this program.\n'
                 'You will need to use the --output-uri option to set the\n'
                 'location of where you want your remote gallery to be.')
-        cur.execute('update original_options set data=%r where name=%r' %
-                    (options.output_uri, 'original_output_uri'))
+        cur.execute('insert into original_options (data,name) values(%r,%r)' %
+                    (options.output_path, 'original_output_path'))
         cxn.commit()
     else:
-        if options.output_uri and options.output_uri != uri:
+        if options.output_path and options.output_path != uri:
             if not options.resync:
                 err('Output URI %s different from the one you used before,\n'
                     '%s. Add the --resync option to force a resync.',
-                    options.output_uri, uri)
+                    options.output_path, uri)
             info('Updating output URI from %s to %s', uri,
-                 options.output_uri)
+                 options.output_path)
             cur.execute('update original_options set data=%s where name=%s',
-                        (options.output_uri, 'original_output_uri'))
+                        (options.output_path, 'original_output_path'))
             cxn.commit()
 
-    cur.execute("select data from original_options where name='original_output_uri'")
-    uri, = cur.fetchone()
-    try:
-        output_uri = gnomevfs.URI(uri)
-    except TypeError:
-        err('Invalid output URI: %s' % uri)
+    cur.execute("select data from original_options where name='original_output_path'")
+    output_path, = cur.fetchone()
 
-    try:
-        info('Checking that %s exists...', output_uri)
-        if not gnomevfs.exists(output_uri):
-            info('Output URI does not exist, trying to create it...')
-            gnomevfs.make_directory(output_uri, 0777)
-    except gnomevfs.Error, e:
-        err('Could not create output URI "%s": %s', output_uri, e)
+    info('Checking that %s exists...', output_path)
+    if not os.path.isdir(output_path):
+        info('Output path does not exist, trying to create it...')
+        os.makedirs(output_path)
 
 def init(args):
     global options
@@ -145,10 +133,9 @@ def init(args):
                       action="store", type="string", dest="photos_path",
                       default=os.path.expanduser("~/Photos"),
                       help="path to the user's photos (default ~/Photos)")
-    parser.add_option('', '--output-uri',
-                      action="store", type="string", dest="output_uri",
-                      help=("where to store the scaled photos, as a "
-                            "gnome-vfs URI"))
+    parser.add_option('', '--output-path',
+                      action="store", type="string", dest="output_path",
+                      help=("where to store the scaled photos"))
     parser.add_option('', '--resync',
                       action="store_true", dest="resync",
                       help=("resync all photos. necessary if you change "
@@ -164,25 +151,9 @@ def init(args):
     parser.add_option('', '--mq',
                       action="store_true", dest="mq",
                       help="offer medium-quality images as well")
-    parser.add_option('', '--only-with-tags',
-                      action="store", type="string", dest="only_with_tags",
-                      help=("only export those photos containing certain "
-                            "tags (comma-separated)"))
-    parser.add_option('', '--except-tags',
-                      action="store", type="string", dest="except_tags",
-                      default="",
-                      help=("don't export photos with certain tags "
-                            "(comma-separated, default '')"))
-    parser.add_option('', '--untagged',
-                      action="store_true", dest="untagged",
-                      help="export untagged photos as well")
-    parser.add_option('', '--overwrite-mode',
-                      action="store", type="string", dest="overwrite_mode",
-                      default="replace",
-                      help=("what to do if the remote file already exists "
-                            "-- one of 'abort', 'replace', or 'skip'"))
-
-    # fixme: add tagging constraints
+    parser.add_option('', '--include-flagged',
+                      action="store_true", dest="include_flagged", default=False,
+                      help="export flagged photos as well")
 
     options, args = parser.parse_args(args)
 
@@ -204,35 +175,16 @@ def init(args):
     dbg('options: %r', options)
 
     ensure_original_in_shotwell()
-    ensure_output_uri_set()
+    ensure_output_path_set()
 
 def get_photos_to_export():
     cur = cxn.cursor()
 
-    def tag_name_to_id(tag):
-        cur.execute('select id from tags where name=%r' % tag)
-        try:
-            id, = cur.fetchone()
-            return id
-        except TypeError:
-            err('Unknown tag "%s". Adjust your --only-with-tags and '
-                '--except-tags and try again.', tag)
-
     sql = 'select id from PhotoTable where 1'
     if not options.resync:
         sql += ' and id not in (select id from original_exports)'
-    if not options.untagged:
-        sql += ' and id in (select photo_id from photo_tags)'
-    if options.only_with_tags:
-        sql += ' and id in (select photo_id from photo_tags where 0'
-        for tag in options.only_with_tags.split(','):
-            sql += ' or tag_id=%d' % tag_name_to_id(tag)
-        sql += ')'
-    if options.except_tags:
-        sql += ' and id not in (select photo_id from photo_tags where 0'
-        for tag in options.except_tags.split(','):
-            sql += ' or tag_id=%d' % tag_name_to_id(tag)
-        sql += ')'
+    if not options.include_flagged:
+        sql += ' and flags == 0'
     dbg('About to run query: %s', sql)
     cur.execute(sql)
     res = cur.fetchall()
@@ -257,7 +209,6 @@ def jhead(msg, frompath, topath, *options):
         elif res != 0:
             warn('Could not transfer EXIF information from %s to %s',
                  frompath, topath)
-    
 
 def transfer_exif(frompath, topath, rotate=False):
     msg = 'calling jhead to transfer exif information from %s to %s' % (frompath,
@@ -305,10 +256,6 @@ def scale_photo(photo_id, tmpdir):
     cur = cxn.cursor()
     cur.execute('select filename from PhotoTable where id=%d' % (photo_id,))
     path = cur.fetchone()[0]
-    ## filename = urlparse.unquote(filename)
-    ## base_uri = urlparse.unquote(base_uri)
-    ## path = os.path.join(base_uri, filename)
-    ## path = path[7:]
     basename = encode(os.path.basename(path))
     dirname = encode(os.path.dirname(path))
     orig_basename = basename
@@ -322,16 +269,9 @@ def scale_photo(photo_id, tmpdir):
     shutil.copyfile(path, copied_picture)
     transfer_exif(path, copied_picture)
     autorotate(path, copied_picture)
-    
-    inuri = gnomevfs.URI(copied_picture)
+
     pixbuf = gdk.pixbuf_new_from_file(copied_picture)
-    
-        
     w, h = pixbuf.get_width(), pixbuf.get_height()
-    overwrite = {'replace': gnomevfs.XFER_OVERWRITE_MODE_REPLACE,
-                 'skip': gnomevfs.XFER_OVERWRITE_MODE_SKIP
-                 }.get(options.overwrite_mode,
-                       gnomevfs.XFER_OVERWRITE_MODE_ABORT)
 
     ret = []
     for kind, bounds in (('normal', normal_bounds((w, h))),
@@ -341,28 +281,19 @@ def scale_photo(photo_id, tmpdir):
         if bounds:
             parts = basename.split('.')
             parts.insert(len(parts)-1, kind)
-            
+
             outfile = os.path.join(tmpdir, '.'.join(parts))
-            outuri = gnomevfs.URI(outfile)
-            
+
             info("Copying %s", outfile)
             if bounds == (w, h):
                 # the identity transformation
                 dbg('simple copy for %s %s scale', basename, kind)
-                gnomevfs.xfer_uri(inuri, outuri,
-                                  gnomevfs.XFER_DEFAULT,
-                                  gnomevfs.XFER_ERROR_MODE_ABORT,
-                                  overwrite)
-                # make sure its perms are correct
-                inf = gnomevfs.get_file_info(outuri)
-                inf.permissions |= 0444
-                gnomevfs.set_file_info(outuri, inf,
-                                       gnomevfs.SET_FILE_INFO_PERMISSIONS)
+                copy_file(copied_picture, outfile)
             else:
                 dbg('scaling %s to %dx%d for %s', basename, bounds[0],
                     bounds[1], kind)
                 copy = pixbuf.scale_simple(bounds[0], bounds[1],
-                                           gtk.gdk.INTERP_BILINEAR)
+                                           gdk.INTERP_BILINEAR)
                 if kind == 'thumb':
                     x, y, center = bounds
                     if x < y:
@@ -386,18 +317,12 @@ def scale_photo(photo_id, tmpdir):
     gc.collect()
     os.unlink(copied_picture)
     return ret
-    
-def mkdirp(uri, relpath):
-    parts = []
-    head, tail = os.path.split(relpath)
-    while tail:
-        parts.append(tail)
-        head, tail = os.path.split(head)
-    parts.append(head)
-    while parts:
-        uri = uri.append_path(parts.pop())
-        if not gnomevfs.exists(uri):
-            gnomevfs.make_directory(uri, 0777)
+
+def copy_file(source, destination):
+    shutil.copy2(source, destination)
+
+def remove_file(path):
+    os.remove(path)
 
 def copy_photo(photo_id, tmpdir, scaled):
     cur = cxn.cursor()
@@ -408,34 +333,23 @@ def copy_photo(photo_id, tmpdir, scaled):
     if relpath[0] == '/':
         relpath = relpath[1:]
     relpath = os.path.dirname(relpath)
-    mkdirp(output_uri, relpath)
-    reluri = output_uri.append_path(relpath)
+    photo_directory = os.path.join(output_path, relpath)
+    if not os.path.exists(photo_directory):
+        os.makedirs(photo_directory)
 
-    xfers = []
-    try:
-        for k, v in scaled:
-            if v:
-                inuri = gnomevfs.URI(v)
-                outuri = reluri.append_path(os.path.basename(v))
-                gnomevfs.xfer_uri(inuri, outuri,
-                                  gnomevfs.XFER_DEFAULT,
-                                  gnomevfs.XFER_ERROR_MODE_ABORT,
-                                  gnomevfs.XFER_OVERWRITE_MODE_REPLACE)
-                xfers.append(str(outuri))
-                gnomevfs.unlink(inuri)
-        args = (photo_id,) + tuple([x[1] and os.path.join(relpath,
-                                                          os.path.basename(x[1]))
-                                    or '' for x in scaled])
-        args2 = tuple([ encode(str(a)) for a in args])
-        req = "insert into original_exports (id, normal_relpath,thumb_relpath,mq_relpath, hq_relpath) values (%s, %r, %r, %r, %r)"
-        cur.execute(req % args2)
-        cxn.commit()
-    except Exception, e:
-        if xfers:
-            warn('An error occurred in while transferring images. You '
-                 'may have to delete the following files manually:\n%s',
-                 '\n'.join(xfers))
-        raise
+    for k, v in scaled:
+        if v:
+            destination = os.path.join(photo_directory, os.path.basename(v))
+            copy_file(v, destination)
+            remove_file(v)
+
+    args = (photo_id,) + tuple([x[1] and os.path.join(relpath,
+                                                      os.path.basename(x[1]))
+                                or '' for x in scaled])
+    args2 = tuple([ encode(str(a)) for a in args])
+    req = "insert into original_exports (id, normal_relpath,thumb_relpath,mq_relpath, hq_relpath) values (%s, %r, %r, %r, %r)"
+    cur.execute(req % args2)
+    cxn.commit()
 
 def rmrf(tmpdir):
     for root, dirs, files in os.walk(tmpdir, topdown=False):
@@ -446,34 +360,27 @@ def rmrf(tmpdir):
     os.rmdir(tmpdir)
 
 def copy_database(tmpdir):
-    # first copy to temp dir, then to remote server
-    inuri = gnomevfs.URI(SHOTWELL_DB)
-    outuri = gnomevfs.URI(tmpdir).append_file_name('photos.db')
-    gnomevfs.xfer_uri(inuri, outuri,
-                      gnomevfs.XFER_DEFAULT,
-                      gnomevfs.XFER_ERROR_MODE_ABORT,
-                      gnomevfs.XFER_OVERWRITE_MODE_ABORT)
-    inuri = outuri
-    outuri = output_uri.append_file_name('db')
-    if not gnomevfs.exists(outuri):
-        info("Creating %s", str(outuri))
-        gnomevfs.make_directory(outuri, 0755)
-        htaccessuri = outuri.append_file_name('.htaccess')
-        info("Creating %s", str(htaccessuri))
-        htaccess = gnomevfs.create(htaccessuri, gnomevfs.OPEN_WRITE)
-        htaccess.write("<Files photos.db>\n\tdeny from all\n</Files>\n")
-        htaccess.close()
+    # first copy to temp dir, then to output_path
+    copy_file(SHOTWELL_DB, tmpdir)
 
-    outuri = outuri.append_file_name('photos.db')
+    db_dir = os.path.join(output_path, "db")
+    if not os.path.isdir(db_dir):
+        info("Creating %s", db_dir)
+        os.makedirs(db_dir)
+        htaccess = os.path.join(db_dir, ".htaccess")
+        info("Creating %s", htaccess)
+        f = open(htaccess, "w")
+        f.write("<Files photos.db>\n\tdeny from all\n</Files>\n")
+        f.close()
+
     info("Copying database...")
-    gnomevfs.xfer_uri(inuri, outuri,
-                      gnomevfs.XFER_DEFAULT,
-                      gnomevfs.XFER_ERROR_MODE_ABORT,
-                      gnomevfs.XFER_OVERWRITE_MODE_REPLACE)
-    return outuri
+    db_path = os.path.join(db_dir, "photos.db")
+    copy_file(os.path.join(tmpdir, "photo.db"), db_path)
+    return db_path
 
 def fixup_database(dbpath):
-    connection = sqlite.connect(str(dbpath)[7:])
+    info("Fixing up photo timestamps...")
+    connection = sqlite.connect(dbpath)
     cur = connection.cursor()
     cur.execute('select id,filename from PhotoTable')
     for photo_id, filename in cur.fetchall():
@@ -488,10 +395,8 @@ def fixup_database(dbpath):
 def main(args):
     init(args)
     to_export = get_photos_to_export()
-    if not to_export:
-        return
     tmpdir = tempfile.mkdtemp()
-    
+
     try:
         for photo_id in to_export:
             try:
@@ -499,7 +404,6 @@ def main(args):
             except KeyboardInterrupt:
                 raise
             except Exception, e:
-                import traceback
                 dbg('%s', traceback.format_exc())
                 warn('Could not scale photo %d, reason: %s. Skipping.',
                      photo_id, e)
@@ -510,7 +414,6 @@ def main(args):
         fixup_database(dbpath)
     finally:
         rmrf(tmpdir)
-    # now need to update the database
 
 if __name__ == '__main__':
     main(sys.argv)
