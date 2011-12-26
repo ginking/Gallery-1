@@ -11,7 +11,10 @@ import shutil
 import EXIF, time
 import traceback
 
-from pysqlite2 import dbapi2 as sqlite
+try:
+    from sqlite3 import dbapi2 as sqlite
+except ImportError:
+    from pysqlite2 import dbapi2 as sqlite
 from gtk import gdk
 
 SHOTWELL_DB = os.path.expanduser("~/.shotwell/data/photo.db")
