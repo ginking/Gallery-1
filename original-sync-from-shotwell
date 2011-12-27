@@ -16,6 +16,8 @@ try:
 except ImportError:
     from pysqlite2 import dbapi2 as sqlite
 from gtk import gdk
+import gobject
+import gst
 
 SHOTWELL_DB = os.path.expanduser("~/.shotwell/data/photo.db")
 VERSION = 0.1
@@ -25,6 +27,7 @@ jhead_available = True
 options = None
 cxn = sqlite.connect(SHOTWELL_DB)
 output_path = None
+loop = None
 
 # square thumbnail size in pixels
 THUMB_SIZE=100
@@ -56,13 +59,22 @@ def encode(s, charset='utf-8'):
         return s.encode(charset, 'replace')
 
 
+def create_video_export_table():
+    cur = cxn.cursor()
+    cur.execute("create table original_video_export ("
+                "   id integer primary key not null, "
+                "   thumbnail_path string not null,  "
+                "   webm_video_path string not null  "
+                ")")
+    cxn.commit()
+
 def ensure_original_in_shotwell():
     cur = cxn.cursor()
     try:
         cur.execute("select data from original_options where name='original_db_version'")
-    except sqlite.OperationalError:
-        # have to molest shotwell
-        dbg('creating original_exports table in f-spot database')
+        version, = cur.fetchone()
+    except:
+        dbg('creating original_exports table in shotwell database')
         cur.execute("create table original_exports (     "
                     "   id integer primary key not null, "
                     "   normal_relpath string not null,  "
@@ -76,7 +88,16 @@ def ensure_original_in_shotwell():
                     ")")
         cxn.commit()
         cur.execute("insert into original_options (name, data) "
-                    "values('original_db_version', '1')")
+                    "values('original_db_version', '2')")
+        cxn.commit()
+        create_video_export_table()
+
+    cur.execute("select data from original_options where name='original_db_version'")
+    version, = cur.fetchone()
+    version = int(version)
+    if version < 2:
+        create_video_export_table()
+        cur.execute("update original_options set data='2' where name='original_db_version'")
         cxn.commit()
 
     if options.resync:
@@ -195,6 +216,23 @@ def get_photos_to_export():
         info('Preparing to export %d photos...', len(res))
     else:
         info('Photos are up to date!')
+    return [x[0] for x in res]
+
+def get_videos_to_export():
+    cur = cxn.cursor()
+
+    sql = 'select id from VideoTable where 1'
+    if not options.resync:
+        sql += ' and id not in (select id from original_video_export)'
+    if not options.include_flagged:
+        sql += ' and flags == 0'
+    dbg('About to run query: %s', sql)
+    cur.execute(sql)
+    res = cur.fetchall()
+    if res:
+        info('Preparing to export %d videos...', len(res))
+    else:
+        info('Videos are up to date!')
     return [x[0] for x in res]
 
 def jhead(msg, frompath, topath, *options):
@@ -321,6 +359,72 @@ def scale_photo(photo_id, tmpdir):
     os.unlink(copied_picture)
     return ret
 
+def finish(tmpdir):
+    dbpath = copy_database(tmpdir)
+    fixup_database(dbpath)
+    rmrf(tmpdir)
+    loop.quit()
+
+def process_video(video_id, tmpdir, remaining):
+    cur = cxn.cursor()
+    cur.execute('select filename,  from VideoTable where id=%d' % (video_id,))
+    relpath, = cur.fetchone()
+    info('Preparing to scale %s', relpath)
+
+    orig_path = relpath
+    orig_filename = os.path.basename(relpath)
+    filename = os.path.splitext(orig_filename)[0]
+
+    if relpath.startswith(options.photos_path):
+        relpath = relpath[len(options.photos_path):]
+    if relpath.startswith('/'):
+        relpath = relpath[1:]
+    relpath = os.path.dirname(relpath)
+    video_directory = os.path.join(output_path, relpath)
+    if not os.path.exists(video_directory):
+        os.makedirs(video_directory)
+
+    # generate thumbnail
+    thumbnail = os.path.join(video_directory, "%s.png" % filename)
+    thumbnail_relpath = os.path.join(relpath, "%s.png" % filename)
+    os.system("totem-video-thumbnailer %s %s" % (orig_path, thumbnail))
+
+    # transcode to webm
+    webm_filename = os.path.join(video_directory, "%s.webm" % filename)
+    webm_relpath = os.path.join(relpath, "%s.webm" % filename)
+    pipeline_desc = "webmmux name=mux ! filesink location=%s "\
+                    "filesrc location=%s ! decodebin2 name=demux "\
+                    "demux. ! ffmpegcolorspace ! "\
+                    "vp8enc threads=2 ! queue ! "\
+                    "progressreport ! mux.video_0 "\
+                    "demux. ! audioconvert ! audiorate ! "\
+                    "vorbisenc ! queue ! mux.audio_0" % (webm_filename, orig_path)
+    pipeline = gst.parse_launch(pipeline_desc)
+
+    def on_eos(*args):
+        pipeline.set_state(gst.STATE_NULL)
+        req = "insert into original_video_export (id, thumbnail_path, webm_video_path) values (%s, %r, %r)"
+        sql = req % (video_id, encode(thumbnail_relpath), encode(webm_relpath))
+        dbg('About to run query: %s', sql)
+        cur.execute(sql)
+        cxn.commit()
+
+        if remaining:
+            process_video(remaining[0], tmpdir, remaining[1:])
+        else:
+            finish(tmpdir)
+
+    def on_error(bus, message):
+        print message
+        finish(tmpdir)
+
+    bus = pipeline.get_bus()
+    bus.add_signal_watch()
+    bus.connect("message::eos", on_eos)
+    bus.connect("message::error", on_error)
+
+    pipeline.set_state(gst.STATE_PLAYING)
+
 def copy_file(source, destination):
     shutil.copy2(source, destination)
 
@@ -395,28 +499,36 @@ def fixup_database(dbpath):
         cur.execute('update PhotoTable set timestamp=%d where id=%d' % (timestamp, photo_id))
     connection.commit()
 
-def main(args):
+def process_all(args):
     init(args)
-    to_export = get_photos_to_export()
+    photos_to_export = get_photos_to_export()
+    videos_to_export = get_videos_to_export()
     tmpdir = tempfile.mkdtemp()
 
-    try:
-        for photo_id in to_export:
-            try:
-                scaled = scale_photo(photo_id, tmpdir)
-            except KeyboardInterrupt:
-                raise
-            except Exception, e:
-                dbg('%s', traceback.format_exc())
-                warn('Could not scale photo %d, reason: %s. Skipping.',
-                     photo_id, e)
-                continue
-            if scaled:
-                copy_photo(photo_id, tmpdir, scaled)
-        dbpath = copy_database(tmpdir)
-        fixup_database(dbpath)
-    finally:
-        rmrf(tmpdir)
+    for photo_id in photos_to_export:
+        try:
+            scaled = scale_photo(photo_id, tmpdir)
+        except KeyboardInterrupt:
+            raise
+        except Exception, e:
+            dbg('%s', traceback.format_exc())
+            warn('Could not scale photo %d, reason: %s. Skipping.',
+                 photo_id, e)
+            continue
+        if scaled:
+            copy_photo(photo_id, tmpdir, scaled)
+
+    if videos_to_export:
+        process_video(videos_to_export[0], tmpdir, videos_to_export[1:])
+    else:
+        finish(tmpdir)
+
+def main(args):
+    global loop
+    loop = gobject.MainLoop()
+
+    gobject.timeout_add(0, process_all, args)
+    loop.run()
 
 if __name__ == '__main__':
     main(sys.argv)
