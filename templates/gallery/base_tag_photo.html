@@ -35,13 +35,13 @@
       {% endif %}
 -->
 
-      {% if rolls %}
-      <span>&gt;<a href="/gallery/rolls">Rolls</a></span>
+      {% if events %}
+      <span>&gt;<a href="/gallery/events">Events</a></span>
       {% endif %}
 
-      {% if roll %}
-      <span>&gt;<a href="/gallery/rolls">Rolls</a></span>
-      <span>&gt;<a href="{{ roll.url }}">Roll {{ roll.id }}</a></span>
+      {% if event %}
+      <span>&gt;<a href="/gallery/events">Events</a></span>
+      <span>&gt;<a href="{{ event.url }}">Event {{ event.name }}</a></span>
       {% endif %}
 
     {% endif %}
