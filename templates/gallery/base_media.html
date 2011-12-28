@@ -90,7 +90,7 @@
 	 {% endfor %}
 
 	 <div id="comment_form" class="form">
-	 <form method="post" action=".">
+	 <form method="post" action=".">{% csrf_token %}
 	   {% if request.openid %}
 	   Posting using your OpenID identity
 	   {% else %}

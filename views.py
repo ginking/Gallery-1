@@ -104,7 +104,7 @@ def photo(request, photo_id, in_tag_name=None, in_event_id=None):
     if request.method == 'POST':
         post = dict(request.POST)
         
-        if request.openid:
+        if hasattr(request, 'openid'):
             post['author'] = request.openid.sreg.get('fullname',
                                                      request.openid)
             post['website'] = request.openid
@@ -118,7 +118,7 @@ def photo(request, photo_id, in_tag_name=None, in_event_id=None):
         form = CommentForm(post)
         if form.is_valid():
             # Do form processing
-            data = form.clean_data
+            data = form.cleaned_data
             ak_data = { 
                 'user_ip': request.META.get('REMOTE_ADDR', '127.0.0.1'), 
                 'user_agent': request.META.get('HTTP_USER_AGENT', ''), 
@@ -132,6 +132,7 @@ def photo(request, photo_id, in_tag_name=None, in_event_id=None):
             data['photo_id'] = photo_id
             data['submit_date'] = datetime.datetime.today()
             data['is_openid'] = is_openid
+            data['video_id'] = 0
             comment = Comment(**data)
             comment.save()
             form = CommentForm()
