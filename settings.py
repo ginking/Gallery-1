@@ -8,6 +8,6 @@ GALLERY_SETTINGS={'items_by_page': 20,
                   'recent_photos_time': 60*60*24*14,
                   'rel_url': '/gallery',
                   'port': 8000,
-                  'akismet_api_key': 'ff5de33397bb',
-                  'blog_url':'http://elisa.fluendo.com'
+                  'akismet_api_key': '',
+                  'blog_url':''
 }

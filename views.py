@@ -23,8 +23,10 @@ G_URL=settings.GALLERY_SETTINGS['rel_url']
 CACHE_TIMEOUT=60*10
 
 aksmet = akismet.Akismet()
-aksmet.setAPIKey(settings.GALLERY_SETTINGS['akismet_api_key'],
-                 settings.GALLERY_SETTINGS['blog_url'])
+if not aksmet.key:
+    # apikey.txt not found, use settings.
+    aksmet.setAPIKey(settings.GALLERY_SETTINGS['akismet_api_key'],
+                     settings.GALLERY_SETTINGS['blog_url'])
 
 def index(request):
     random = Photo.get_random(8)
