@@ -587,6 +587,12 @@ class Tag(models.Model):
         date = int(time.time() - t)
         return self.video_set.filter(time_created__gt=date).distinct()
 
+    def photo_set_from(self, photo_time):
+        last = list(self.photo_set.values('timestamp'))[-1]['timestamp']
+        photos = self.photo_set.exclude(timestamp__gte=last).filter(timestamp__gte=photo_time).order_by('timestamp')
+        photo_ids = [ p.id for p in photos ]
+        return Photo.ExportClass.objects.using("gallery").filter(pk__in=photo_ids)
+
     def url(self):
         return '%s/tag/%s' % (G_URL, slugify(self.name))
 

@@ -1,7 +1,7 @@
 {% extends "gallery/base_tag.html" %}
 
 {% block extra_head %}
-<script src="/gallery/static/navigation.js" type="text/javascript"></script>
+<script src="{{ rel_url }}/static/navigation.js" type="text/javascript"></script>
 {% endblock %}
 
 {% block prev_next %}
@@ -47,6 +47,9 @@
 	   {% if media.event %}
 	   <a href="{{ media.event.url }}">Event {{ media.event.name }}</a><br/>
 	     {% endif %}
+	   {% if tag and slideshow_url %}
+             <a href="{{ slideshow_url }}">Slideshow</a><br/>
+	   {% endif %}
 	   Tags:
 	   {% for tag in media.get_tags %}
 	   <a href="{{tag.url}}">{{tag.human_name}}</a>

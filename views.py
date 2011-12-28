@@ -43,6 +43,15 @@ def index(request):
                               context_instance=RequestContext(request))
 index = cache_page(index, CACHE_TIMEOUT)
 
+def slideshow(request, tag_name=None, photo_id=None):
+    tag = Tag.with_name(tag_name)
+    p = get_object_or_404(Photo.objects.using("gallery"), pk=photo_id)
+    photos = tag.photo_set_from(p.timestamp)
+    params = {'photos': photos}
+    return render_to_response('gallery/slideshow.html', params,
+                              context_instance=RequestContext(request))
+slideshow = cache_page(slideshow, CACHE_TIMEOUT)
+
 def recent(request, tag_name=None, page=None):
     tag = Tag.with_name(tag_name)
     if not tag:
@@ -128,9 +137,10 @@ def photo(request, photo_id, in_tag_name=None, in_event_id=None):
         next = p.get_sibling_media('next', **kw)
         p.increment_hit()
         slug = '/%s/photo/%s/' % (G_URL, p.id)
+        slideshow_url = '%s/slideshow/%s/%d' % (G_URL, in_tag_name, p.id)
         params = {'tag': tag, 'media': p, 'previous': previous,
                   'slug': slug, 'next': next, 'exported': exported,
-                  'form': form, 'event': event}
+                  'form': form, 'event': event, 'slideshow_url': slideshow_url}
         params.update(DEFAULT_PARAMS)
         context = RequestContext(request)
         response = render_to_response('gallery/photo.html', params,

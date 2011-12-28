@@ -1,0 +1,61 @@
+{% extends "gallery/base_tag.html" %}
+
+{% block extra_head %}
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js"></script>
+<script src="{{ rel_url }}/gallery/static/galleria/galleria-1.2.6.min.js"></script>
+<style>
+/* This rule is read by Galleria to define the gallery height: */
+#galleria{height:500px}
+</style>
+{% endblock %}
+
+{% block in_body %}
+<div id="galleria">
+    {% for photo in photos %}
+    <a href="{{ photo.normal_url }}">
+        <img src="{{ photo.thumb_url }}"
+        {% if photo.photo.title %}
+             alt="{{ photo.photo.title }}"
+        {% endif %}
+    ></a>
+    {% endfor %}
+</div>
+<a id="fullscreen" href="#">Enter fullscreen</a>
+<script>
+
+    // Load the classic theme
+    Galleria.loadTheme('{{ rel_url }}/gallery/static/galleria/themes/classic/galleria.classic.min.js');
+
+    // Initialize Galleria
+
+    Galleria.ready(function(options) {
+
+      this.attachKeyboard({
+         left: this.prev, // applies the native prev() function
+         right: this.next,
+      });
+
+      //   this.setOptions('thumbnails', 'false').refreshImage();
+      this.bind(Galleria.FULLSCREEN_ENTER, function(e) {
+         document.getElementById('galleria').firstChild.style.background = '#000';
+         this.play(3500);
+      });
+
+      this.bind(Galleria.FULLSCREEN_EXIT, function(e) {
+         this.pause();
+      });
+    });
+
+    $('#galleria').galleria({
+     thumbnails: false,
+     extend: function() {
+       $('#fullscreen').click(this.proxy(function(e)
+       {
+         e.preventDefault();
+         // call the enterFullscreen() method from the galleria API
+         this.enterFullscreen();
+       }));
+     }
+    });
+</script>
+{% endblock %}
