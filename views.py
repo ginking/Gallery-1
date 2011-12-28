@@ -1,11 +1,9 @@
 from django.http import Http404, HttpResponse, HttpResponseRedirect
-from django import forms
 from django.shortcuts import render_to_response, get_object_or_404, \
      get_list_or_404
-from gallery.models import OriginalExport, Photo, Tag, Comment, Event, \
+from gallery.models import OriginalExport, Photo, Tag, Event, \
      OriginalVideoExport, Video
-from gallery import forms as gallery_forms
-from gallery.utils import beautyfull_text, get_page
+from gallery.utils import process_form, get_page
 from django.template import RequestContext
 from django.conf import settings
 from django.views.decorators.cache import cache_page
@@ -99,52 +97,11 @@ def date(request, year, month, day, page=None):
 date = cache_page(date, CACHE_TIMEOUT)
 
 def photo(request, photo_id, in_tag_name=None, in_event_id=None):
-    reset_cache = False
-    CommentForm = gallery_forms.CommentForm
-    if request.method == 'POST':
-        post = dict(request.POST)
-        
-        if hasattr(request, 'openid'):
-            post['author'] = request.openid.sreg.get('fullname',
-                                                     request.openid)
-            post['website'] = request.openid
-            is_openid = True
-        else:
-            post['author'] = post['author'][0]
-            post['website'] = post['website'][0]
-            is_openid = False
-            
-        post['comment'] = post['comment'][0]
-        form = CommentForm(post)
-        if form.is_valid():
-            # Do form processing
-            data = form.cleaned_data
-            ak_data = { 
-                'user_ip': request.META.get('REMOTE_ADDR', '127.0.0.1'), 
-                'user_agent': request.META.get('HTTP_USER_AGENT', ''), 
-                'referrer': request.META.get('HTTP_REFERER', ''), 
-                'comment_type': 'comment', 
-                'comment_author': post['author'],
-                'comment_author_url': post['website']}
-            data['public'] = not aksmet.comment_check(data, ak_data)
-            
-            data['comment'] = beautyfull_text(data['comment'])
-            data['photo_id'] = photo_id
-            data['submit_date'] = datetime.datetime.today()
-            data['is_openid'] = is_openid
-            data['video_id'] = 0
-            comment = Comment(**data)
-            comment.save()
-            form = CommentForm()
-            reset_cache = True
-        else:
-            form = CommentForm(request.POST)
-    else:
-        form = CommentForm()
+    reset_cache, form = process_form(request, aksmet, photo_id=photo_id)
 
     response = None
     cache_key = 'photo_%s' % photo_id
-    
+
     if not reset_cache:
         response = cache.get(cache_key)
         if not response:
@@ -180,9 +137,7 @@ def photo(request, photo_id, in_tag_name=None, in_event_id=None):
     return response
 
 def video(request, video_id, in_tag_name=None, in_event_id=None):
-    reset_cache = False
-    CommentForm = gallery_forms.CommentForm
-    form = CommentForm()
+    reset_cache, form = process_form(request, aksmet, video_id=video_id)
 
     response = None
     cache_key = 'video_%s' % video_id
