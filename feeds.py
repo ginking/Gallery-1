@@ -1,6 +1,5 @@
 from django.contrib.syndication.feeds import Feed
-from gallery.models import Tag, Photo, Video
-from gallery.addon_models import Comment
+from gallery.models import Tag, Photo, Video, Comment
 from django.core.exceptions import ObjectDoesNotExist
 
 class Photos(Feed):

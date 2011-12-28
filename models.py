@@ -8,7 +8,7 @@ import time
 import os, Image
 import EXIF
 
-from addon_models import PhotoAddon, VideoAddon, TagAddon, Comment
+from addon_models import PhotoAddon, VideoAddon, TagAddon
 
 G_URL=settings.GALLERY_SETTINGS['rel_url']
 G_PORT=settings.GALLERY_SETTINGS.get('port')
@@ -313,7 +313,7 @@ class Media(object):
 
     def get_comments(self):
         if isinstance(self, Photo):
-            condition = {"photo": self.id}
+            condition = {"photo_id": self.id}
         else:
             condition = {"video_id": self.id}
         comments = Comment.objects.filter(**condition).order_by('submit_date')
@@ -668,3 +668,48 @@ class Video(models.Model, Media):
         return url
 
     get_absolute_url = url
+
+
+class Comment(models.Model):
+    photo_id = models.IntegerField(null=True)
+    video_id = models.IntegerField(null=True)
+    comment = models.TextField()
+    author = models.CharField(max_length=60)
+    website = models.CharField(max_length=128, blank=True)
+    submit_date = models.DateTimeField(blank=True)
+    is_openid = models.BooleanField(default=True)
+    public = models.BooleanField(default=True)
+
+    class Admin:
+        list_display = ('id','public','photo', 'comment', 'submit_date',)
+
+    class Meta:
+        ordering = ('-submit_date',)
+
+    def __str__(self):
+        if self.photo_id:
+            return "%s on photo %s: %s..." % (self.author, self.photo_id,
+                                              self.comment[:100])
+        else:
+            return "%s on video %s: %s..." % (self.author, self.video_id,
+                                              self.comment[:100])
+
+    def as_dict(self):
+        return {'comment': self.comment, 'author': self.author,
+                'website': self.website, 'submit_date': self.submit_date}
+
+    def url(self):
+        if self.photo_id:
+            return '%s#c%s' % (self.photo.url(), self.id)
+        else:
+            return '%s#c%s' % (self.video.url(), self.id)
+
+    get_absolute_url = url
+
+    @property
+    def photo(self):
+        return Photo.objects.using("gallery").get(id=self.photo_id)
+
+    @property
+    def video(self):
+        return Video.objects.using("gallery").get(id=self.video_id)
