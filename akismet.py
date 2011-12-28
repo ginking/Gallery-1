@@ -1,26 +1,22 @@
-# Version 0.1.5
-# 2006/02/05
+# Version 0.2.0
+# 2009/06/18
 
-# Copyright Michael Foord 2005 - 2007
+# Copyright Michael Foord 2005-2009
 # akismet.py
 # Python interface to the akismet API
+# E-mail fuzzyman@voidspace.org.uk
 
 # http://www.voidspace.org.uk/python/modules.shtml
 # http://akismet.com
 
 # Released subject to the BSD License
-# Please see http://www.voidspace.org.uk/python/license.shtml
+# See http://www.voidspace.org.uk/python/license.shtml
 
-# For information about bugfixes, updates and support, please join the Pythonutils mailing list.
-# http://groups.google.com/group/pythonutils/
-# Comments, suggestions and bug reports welcome.
-# Scripts maintained at http://www.voidspace.org.uk/python/index.shtml
-# E-mail fuzzyman@voidspace.org.uk
 
 """
-A python interface to the `Akismet <http://akismet.com>`_ 
-{acro;API;Application Programmers Interface}. This is a web service for
-blocking SPAM comments to blogs - or other online services.
+A python interface to the `Akismet <http://akismet.com>`_ API.
+This is a web service for blocking SPAM comments to blogs - or other online 
+services.
 
 You will need a Wordpress API key, from `wordpress.com <http://wordpress.com>`_.
 
@@ -30,14 +26,36 @@ value.
 
 The default is : ::
 
-    Python Interface by Fuzzyman | akismet.py/0.1.3
+    Python Interface by Fuzzyman | akismet.py/0.2.0
 
 Whatever you pass in, will replace the *Python Interface by Fuzzyman* part.
-**0.1.2** will change with the version of this interface.
+**0.2.0** will change with the version of this interface.
 
+Usage example::
+    
+    from akismet import Akismet
+    
+    api = Akismet(agent='Test Script')
+    # if apikey.txt is in place,
+    # the key will automatically be set
+    # or you can call api.setAPIKey()
+    #
+    if api.key is None:
+        print "No 'apikey.txt' file."
+    elif not api.verify_key():
+        print "The API key is invalid."
+    else:
+        # data should be a dictionary of values
+        # They can all be filled in with defaults
+        # from a CGI environment
+        if api.comment_check(comment, data):
+            print 'This comment is spam.'
+        else:
+            print 'This comment is ham.'
 """
+
+
 import os, sys
-import urllib2
 from urllib import urlencode
 
 import socket
@@ -45,9 +63,7 @@ if hasattr(socket, 'setdefaulttimeout'):
     # Set the default timeout on sockets to 5 seconds
     socket.setdefaulttimeout(5)
 
-isfile = os.path.isfile
-
-__version__ = '0.1.5'
+__version__ = '0.2.0'
 
 __all__ = (
     '__version__',
@@ -62,6 +78,29 @@ __docformat__ = "restructuredtext en"
 
 user_agent = "%s | akismet.py/%s"
 DEFAULTAGENT = 'Python Interface by Fuzzyman/%s'
+
+isfile = os.path.isfile
+
+urllib2 = None
+try:
+    from google.appengine.api import urlfetch
+except ImportError:
+    import urllib2
+
+if urllib2 is None:
+    def _fetch_url(url, data, headers):
+        req = urlfetch.fetch(url=url, payload=data, method=urlfetch.POST, headers=headers)
+        if req.status_code == 200:
+            return req.content
+        raise Exception('Could not fetch Akismet URL: %s Response code: %s' % 
+                        (url, req.status_code))
+else:
+    def _fetch_url(url, data, headers):
+        req = urllib2.Request(url, data, headers)
+        h = urllib2.urlopen(req)
+        resp = h.read()
+        return resp
+
 
 class AkismetError(Exception):
     """Base class for all akismet exceptions."""
@@ -93,11 +132,9 @@ class Akismet(object):
     
     def _safeRequest(self, url, data, headers):
         try:
-            req = urllib2.Request(url, data, headers)
-            h = urllib2.urlopen(req)
-            resp = h.read()
-        except (urllib2.HTTPError, urllib2.URLError, IOError), e:
-            raise AkismetError(str(e))       
+            resp = _fetch_url(url, data, headers)
+        except Exception, e:
+            raise AkismetError(str(e))
         return resp
 
 
@@ -274,6 +311,8 @@ class Akismet(object):
             data = {}
         if build_data:
             self._build_data(comment, data)
+        if 'blog' not in data:
+            data['blog'] = self.blog_url
         url = '%scomment-check' % self._getURL()
         # we *don't* trap the error here
         # so if akismet is down it will raise an HTTPError or URLError
@@ -331,43 +370,3 @@ class Akismet(object):
         # so if akismet is down it will raise an HTTPError or URLError
         headers = {'User-Agent' : self.user_agent}
         self._safeRequest(url, urlencode(data), headers)
-
-"""
-
-USAGE
-=====
-
-.. raw:: html
-
-    {+coloring}
-    
-    api = Akismet(agent='Test Script')
-    # if apikey.txt is in place,
-    # the key will automatically be set
-    # or you can call ``api.setAPIKey()``
-    #
-    if api.key is None:
-        print "No 'apikey.txt' file."
-    elif not api.verify_key():
-        print "The API key is invalid."
-    else:
-        # data should be a dictionary of values
-        # They can all be filled in with defaults
-        # from a CGI environment
-        if api.comment_check(comment, data):
-            print 'This comment is spam.'
-        else:
-            print 'This comment is ham.'
-    
-    {-coloring}
-
-TODO
-====
-
-Make the timeout adjustable ?
-
-Should we fill in a default value for permalink ?
-
-What about automatically filling in the 'HTTP_*' values from os.environ ?
-
-"""
