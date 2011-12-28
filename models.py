@@ -1,4 +1,4 @@
-from django.db import models, connection, connections
+from django.db import models, connection
 from django.conf import settings
 from django.template.defaultfilters import slugify
 from django.contrib.sites.models import Site
@@ -7,6 +7,8 @@ import datetime
 import time
 import os, Image
 import EXIF
+
+from addon_models import PhotoAddon, VideoAddon, TagAddon, Comment
 
 G_URL=settings.GALLERY_SETTINGS['rel_url']
 G_PORT=settings.GALLERY_SETTINGS.get('port')
@@ -17,14 +19,23 @@ if G_PORT:
 else:
     SITE_URL = 'http://%s%s' % (SITE, G_URL)
 
-def shotwell_id_to_db_id(weird_id):
+def shotwell_photo_id_to_db_id(weird_id):
     # thumb00000000000x -> base10 number
     return int("0x%s" % weird_id[5:], 16)
 
-def db_id_to_shotwell_id(normal_id):
+def db_id_to_shotwell_photo_id(normal_id):
     # base10 number -> thumb00000000000x
     hex_id = hex(normal_id)[2:]
     return 'thumb' + (16 - len(hex_id)) * '0' + hex_id
+
+def shotwell_video_id_to_db_id(weird_id):
+    # video-0000000000000013 -> base10 number
+    return int("0x%s" % weird_id[6:], 16)
+
+def db_id_to_shotwell_video_id(normal_id):
+    # base10 number -> video-0000000000000013
+    hex_id = hex(normal_id)[2:]
+    return 'video-' + (16 - len(hex_id)) * '0' + hex_id
 
 class OriginalExport(models.Model):
     id = models.IntegerField(primary_key=True)
@@ -34,6 +45,9 @@ class OriginalExport(models.Model):
     hq_relpath = models.TextField()
 
     media_url = '%s/media/' % SITE_URL
+
+    photo = models.ForeignKey("Photo", db_column="id")
+    timestamp_spec = "photo__timestamp"
 
     class Meta:
         db_table = 'original_exports'
@@ -46,24 +60,6 @@ class OriginalExport(models.Model):
                 'normal_url': self.normal_url(),
                 'hq_url': self.hq_url(),
                 'mq_url': self.mq_url()}
-
-    @classmethod
-    def get_random(cls, number, since=None, category_id=None):
-        cls_objects = cls.objects.using("gallery")
-        if not since and not category_id:
-            objects = cls_objects.order_by('?')[:number]
-        elif since:
-            sql = 'select oe.id from original_exports oe, PhotoTable p where oe.id=p.id and p.timestamp > %r order by random() limit %r'
-            cursor = connections["gallery"].cursor()
-            cursor.execute(sql % (float(since), int(number),))
-            objects = [cls_objects.get(id=id) for [id,] in cursor.fetchall()]
-        elif category_id:
-            sql = 'select oe.id from original_exports oe, photo_tags pt where oe.id=pt.photo_id and pt.tag_id in (select id from tags where category_id=%r) order by random() limit %r'
-            cursor = connections["gallery"].cursor()
-            cursor.execute(sql % (category_id, number,))
-            objects = [cls_objects.get(id=id) for [id,] in cursor.fetchall()]
-
-        return objects
 
     def perm_url(self):
         return "%s/photo/%s" % (G_URL, self.id)
@@ -105,6 +101,38 @@ class OriginalExport(models.Model):
         return url
 
 
+class OriginalVideoExport(models.Model):
+    id = models.IntegerField(primary_key=True)
+    thumbnail_path = models.TextField()
+    webm_video_path = models.TextField()
+    webm_video_width = models.IntegerField()
+    webm_video_height = models.IntegerField()
+
+    video = models.ForeignKey("Video", db_column="id")
+    timestamp_spec = "video__time_created"
+
+    class Meta:
+        db_table = u'original_video_export'
+
+    media_url = '%s/media/' % SITE_URL
+
+    def normal_width(self):
+        return self.webm_video_width
+
+    def normal_height(self):
+        return self.webm_video_height
+
+    def thumb_url(self):
+        return "%s%s" % (self.media_url, self.thumbnail_path)
+
+    def normal_url(self):
+        return "%s%s" % (self.media_url, self.webm_video_path)
+
+    def perm_url(self):
+        return "%s/video/%s" % (G_URL, self.id)
+
+    get_absolute_url = perm_url
+
 class Event(models.Model):
     id = models.IntegerField(null=True, primary_key=True, blank=True)
     name = models.TextField(blank=True)
@@ -117,7 +145,7 @@ class Event(models.Model):
 
     @property
     def primary_photo(self):
-        return Photo.objects.using("gallery").get(shotwell_id_to_db_id(self.primary_photo_id))
+        return Photo.objects.using("gallery").get(shotwell_photo_id_to_db_id(self.primary_photo_id))
 
     @property
     def url(self):
@@ -126,7 +154,10 @@ class Event(models.Model):
     @property
     def timestamp(self):
         if not hasattr(self, '_timestamp'):
-            self._timestamp = self.photo_set.order_by('timestamp')[0].timestamp
+            try:
+                self._timestamp = self.photo_set.order_by('timestamp')[0].timestamp
+            except IndexError:
+                self._timestamp = self.video_set.order_by('time_created')[0].time_created
         return self._timestamp
 
     def date(self):
@@ -145,7 +176,152 @@ class Event(models.Model):
         tags.sort()
         return tags
 
-class Photo(models.Model):
+class Media(object):
+
+    @classmethod
+    def get_random(cls, number, since=None):
+        objects = cls.ExportClass.objects.using("gallery")
+        if since:
+            timestamp_match = "%s__gt" % cls.ExportClass.timestamp_spec
+            condition = {timestamp_match: float(since)}
+            objects = objects.filter(**condition)
+        return objects.order_by('?')[:number]
+
+    @classmethod
+    def recent(cls):
+        t = settings.GALLERY_SETTINGS['recent_photos_time']
+        date = int(time.time() - t)
+        if cls == Photo:
+            condition = {'timestamp__gt': date}
+        else:
+            condition = {'time_created__gt': date}
+        return cls.objects.using("gallery").filter(**condition).distinct()
+
+    def get_sibling_media(self, direction, tag=None, event_id=None):
+        media = None
+        event = None
+
+        if tag:
+            photo_set = tag.photo_set
+            video_set = tag.video_set
+        elif event_id:
+            event = Event.objects.using("gallery").get(id=event_id)
+            photo_set = event.photo_set
+            video_set = event.video_set
+        else:
+            return None
+
+        timestamp = self.timestamp
+        if direction == 'previous':
+            photos = photo_set.filter(timestamp__lt=timestamp).order_by('-timestamp')
+            videos = video_set.filter(time_created__lt=timestamp).order_by('-time_created')
+            idx = 1
+        else:
+            photos = photo_set.filter(timestamp__gt=timestamp).order_by('timestamp')
+            videos = video_set.filter(time_created__gt=timestamp).order_by('time_created')
+            idx = 0
+
+        medias = []
+        if photos:
+            medias.append(photos[0])
+        if videos:
+            medias.append(videos[0])
+
+        if medias:
+            medias.sort()
+            try:
+                media = medias[idx]
+            except IndexError:
+                media = medias[0]
+            if tag:
+                media._url = media.url(slugify(tag.name))
+            else:
+                media._url = media.url(event_id)
+        return media
+
+    def __cmp__(self, other_media):
+        return cmp(self.timestamp, other_media.timestamp)
+
+    def event_url(self):
+        return '%s/event/%s/%s/%s' % (G_URL, self._media_type(), self.id, self.event.id)
+
+    def same_day_url(self):
+        day = datetime.date.fromtimestamp(self.timestamp)
+        return '%s/date/%s/%s/%s' % (G_URL, day.year, day.month, day.day)
+
+    def get_date(self):
+        day = datetime.date.fromtimestamp(self.timestamp)
+        d = datetime.date(day.year, day.month, day.day)
+        human_date = d.strftime('%A %d %B')
+        return human_date
+
+    @classmethod
+    def for_date(cls, year, month, day):
+        one_day = datetime.timedelta(hours=23, minutes=59, seconds=59)
+        the_day = datetime.datetime(year=year, month=month, day=day)
+        midnight = the_day + one_day
+        r = (int(time.mktime(the_day.timetuple())),
+             int(time.mktime(midnight.timetuple())))
+        objects = cls.objects.using("gallery")
+        if cls == Photo:
+            medias = objects.exclude(timestamp__gte=r[1]).filter(timestamp__gte=r[0]).order_by('timestamp')
+        else:
+            medias = objects.exclude(time_created__gte=r[1]).filter(time_created__gte=r[0]).order_by('time_created')
+        return medias
+
+    def _media_type(self):
+        if isinstance(self, Video):
+            return "video"
+        else:
+            return "photo"
+
+    def _foreign_key_name(self):
+        return "%s_id" % self._media_type()
+
+    def get_hits(self):
+        cond = {self._foreign_key_name(): self.id}
+        try:
+            addon = self.AddonClass.objects.get(**cond)
+        except:
+            hits = 0
+        else:
+            hits = addon.hits
+        return hits
+
+    def increment_hit(self):
+        cond = {self._foreign_key_name(): self.id}
+        try:
+            addon = self.AddonClass.objects.get(**cond)
+        except:
+            cond["hits"] = 1
+            addon = self.AddonClass(**cond)
+        else:
+            addon.hits += 1
+        addon.save()
+
+    def get_exported(self):
+        if not hasattr(self, '_exported'):
+            self._exported = self.ExportClass.objects.using("gallery").get(id=self.id)
+        return self._exported
+
+    def get_tags(self, recurse=True):
+        all_tags = {}
+        for tag in self.tags.all():
+            if not tag.is_category:
+                all_tags[tag.name] = tag
+        return all_tags.values()
+
+    def get_comments(self):
+        if isinstance(self, Photo):
+            condition = {"photo": self.id}
+        else:
+            condition = {"video_id": self.id}
+        comments = Comment.objects.filter(**condition).order_by('submit_date')
+        if not comments:
+            comments = []
+        return comments
+
+class Photo(models.Model, Media):
     id = models.IntegerField(null=True, primary_key=True, blank=True)
     filename = models.TextField(unique=True)
     width = models.IntegerField(null=True, blank=True)
@@ -178,6 +354,9 @@ class Photo(models.Model):
     class Meta:
         db_table = u'PhotoTable'
 
+    AddonClass = PhotoAddon
+    ExportClass = OriginalExport
+
     def __str__(self):
         return self.title or self.name
 
@@ -194,69 +373,13 @@ class Photo(models.Model):
                 'comments': [ c.as_dict() for c in self.get_comments()],
                 'tags': [tag.name for tag in self.get_tags()]}
 
-    @classmethod
-    def for_date(self, year, month, day):
-        one_day = datetime.timedelta(hours=23, minutes=59, seconds=59)
-        the_day = datetime.datetime(year=year, month=month, day=day)
-        midnight = the_day + one_day
-        r = (int(time.mktime(the_day.timetuple())),
-             int(time.mktime(midnight.timetuple())))
-        photos = self.objects.using("gallery").exclude(timestamp__gte=r[1]).filter(timestamp__gte=r[0])
-        photos = photos.order_by('timestamp')
-        return photos
-
-    @classmethod
-    def popular(cls, tag_name):
-        photos = []
-        # Take at most 10 photos having their hits number > 20
-        max_photos = 10
-        min_hits = 20
-        most_viewed = PhotoAddon.objects.exclude(hits__lte=min_hits).order_by('-hits')
-        if not tag_name:
-            most_viewed = most_viewed[:max_photos]
-
-        for addon in most_viewed:
-            try:
-                photo = cls.objects.using("gallery").get(id=addon.photo_id)
-            except:
-                continue
-            if tag_name:
-                tags = [ slugify(t.name) for t in photo.get_tags(recurse=False) ]
-                if tag_name not in tags:
-                    continue
-            if len(photos) > max_photos:
-                break
-            photo.hits = addon.hits
-            photos.append(photo)
-        return photos
-
-    @classmethod
-    def recent(cls):
-        t = settings.GALLERY_SETTINGS['recent_photos_time']
-        date = int(time.time() - t)
-        photos = cls.objects.using("gallery").filter(timestamp__gt=date).distinct()
-        return photos
-
     @property
     def shotwell_photo_id(self):
-        return db_id_to_shotwell_id(self.id)
+        return db_id_to_shotwell_photo_id(self.id)
 
     @property
     def tags(self):
         return Tag.objects.using("gallery").filter(photo_id_list__contains=self.shotwell_photo_id)
-
-    def get_tags(self, recurse=True):
-        all_tags = {}
-        for tag in self.tags.all():
-            if not tag.is_category:
-                all_tags[tag.name] = tag
-        return all_tags.values()
-
-    def get_comments(self):
-        comments = Comment.objects.filter(photo_id=self.id).order_by('submit_date')
-        if not comments:
-            comments = []
-        return comments
 
     def url(self, extra=None):
         if hasattr(self, '_url'):
@@ -273,61 +396,6 @@ class Photo(models.Model):
 
     def in_tag_url(self, tag_name):
         return '%s/photo/%s/%s' % (G_URL, self.id, slugify(tag_name))
-
-    def same_day_url(self):
-        day = datetime.date.fromtimestamp(self.timestamp)
-        return '%s/date/%s/%s/%s' % (G_URL, day.year, day.month, day.day)
-
-    def get_exported(self):
-        if not hasattr(self, '_exported'):
-            self._exported = OriginalExport.objects.using("gallery").get(id=self.id)
-        return self._exported
-
-    def get_hits(self):
-        try:
-            addon = PhotoAddon.objects.get(photo_id=self.id)
-        except:
-            hits = 0
-        else:
-            hits = addon.hits
-        return hits
-
-    def get_date(self):
-        day = datetime.date.fromtimestamp(self.timestamp)
-        d = datetime.date(day.year, day.month, day.day)
-        human_date = d.strftime('%A %d %B')
-        return human_date
-
-    def increment_hit(self):
-        try:
-            addon = PhotoAddon.objects.get(photo_id=self.id)
-        except:
-            addon = PhotoAddon(photo_id=self.id, hits=1)
-        else:
-            addon.hits += 1
-        addon.save()
-
-    def get_sibling_photo(self, direction, tag=None, event_id=None):
-        photo = None
-        prev = direction == 'previous'
-        if tag:
-            if prev:
-                photos = tag.photo_set.filter(timestamp__lt=self.timestamp).order_by('-timestamp')
-            else:
-                photos = tag.photo_set.filter(timestamp__gt=self.timestamp).order_by('timestamp')
-            if photos:
-                photo = photos[0]
-                photo._url = photo.url(slugify(tag.name))
-        elif event_id:
-            event = Event.objects.using("gallery").get(id=event_id)
-            if prev:
-                photos = event.photo_set.filter(timestamp__lt=self.timestamp).order_by('-timestamp')
-            else:
-                photos = event.photo_set.filter(timestamp__gt=self.timestamp).order_by('timestamp')
-            if photos:
-                photo = photos[0]
-                photo._url = photo.url(event_id)
-        return photo
 
     @property
     def exif_data(self):
@@ -387,9 +455,18 @@ class Tag(models.Model):
     @property
     def photo_set(self):
         # example of photo_id_list value: thumb0000000000000011,thumb0000000000000013,
-        real_photo_ids = [ shotwell_id_to_db_id(weird_id)
-                           for weird_id in self.photo_id_list.split(",") if weird_id]
+        real_photo_ids = [ shotwell_photo_id_to_db_id(weird_id)
+                           for weird_id in self.photo_id_list.split(",")
+                           if weird_id.startswith("thumb")]
         return Photo.objects.using("gallery").filter(id__in=real_photo_ids)
+
+    @property
+    def video_set(self):
+        # example of photo_id_list value: video-0000000000000011,video-0000000000000013,
+        real_video_ids = [ shotwell_video_id_to_db_id(weird_id)
+                           for weird_id in self.photo_id_list.split(",")
+                           if weird_id.startswith("video")]
+        return Video.objects.using("gallery").filter(id__in=real_video_ids)
 
     @property
     def human_name(self):
@@ -417,6 +494,7 @@ class Tag(models.Model):
         final_set = []
         for tag in tags:
             final_set.extend(tag.photo_set.all())
+            final_set.extend(tag.video_set.all())
         return final_set
 
     @classmethod
@@ -431,8 +509,8 @@ class Tag(models.Model):
 
     @classmethod
     def get_cloud(cls):
-        words = [(t.name, t.human_name, t.photo_set.count()) for t in cls.objects.using("gallery").all()
-                 if not t.is_category]
+        words = [(t.name, t.human_name, t.photo_set.count() + t.video_set.count())
+                 for t in cls.objects.using("gallery").all() if not t.is_category]
         words.sort()
         return cls._get_cloud(words)
 
@@ -490,8 +568,11 @@ class Tag(models.Model):
         date = int(time.time() - t)
         tags = []
         for tag in cls.objects.using("gallery").all():
+            if tag.is_category:
+                continue
             recent_photos = tag.photo_set.filter(timestamp__gt=date).distinct()
-            if recent_photos and not tag.is_category:
+            recent_videos = tag.video_set.filter(time_created__gt=date).distinct()
+            if recent_photos or recent_videos:
                 tags.append(tag)
 
         return tags
@@ -499,8 +580,12 @@ class Tag(models.Model):
     def get_recent_photos(self):
         t = settings.GALLERY_SETTINGS['recent_photos_time']
         date = int(time.time() - t)
-        photos = self.photo_set.filter(timestamp__gt=date).distinct()
-        return photos
+        return self.photo_set.filter(timestamp__gt=date).distinct()
+
+    def get_recent_videos(self):
+        t = settings.GALLERY_SETTINGS['recent_photos_time']
+        date = int(time.time() - t)
+        return self.video_set.filter(time_created__gt=date).distinct()
 
     def url(self):
         return '%s/tag/%s' % (G_URL, slugify(self.name))
@@ -509,9 +594,6 @@ class Tag(models.Model):
 
     def recent_url(self):
         return '%s/recent/%s' % (G_URL, slugify(self.name))
-
-    def popular_url(self):
-        return '%s/popular/%s' % (G_URL, slugify(self.name))
 
     def get_description(self):
         try:
@@ -536,45 +618,53 @@ class Tag(models.Model):
             return []
         return Tag.objects.using("gallery").filter(name__in=self.name)
 
-class TagAddon(models.Model):
-    tag_id = models.IntegerField()
-    description = models.CharField(max_length=350)
+class Video(models.Model, Media):
+    id = models.IntegerField(null=True, primary_key=True, blank=True)
+    filename = models.TextField(unique=True)
+    width = models.IntegerField(null=True, blank=True)
+    height = models.IntegerField(null=True, blank=True)
+    clip_duration = models.FloatField(null=True, blank=True)
+    is_interpretable = models.IntegerField(null=True, blank=True)
+    filesize = models.IntegerField(null=True, blank=True)
+    timestamp = models.IntegerField(null=True, blank=True)
+    exposure_time = models.IntegerField(null=True, blank=True)
+    import_id = models.IntegerField(null=True, blank=True)
+    md5 = models.TextField(blank=True)
+    time_created = models.IntegerField(null=True, blank=True)
+    rating = models.IntegerField(null=True, blank=True)
+    title = models.TextField(blank=True)
+    backlinks = models.TextField(blank=True)
+    time_reimported = models.IntegerField(null=True, blank=True)
+    flags = models.IntegerField(null=True, blank=True)
+    event = models.ForeignKey(Event)
 
-    class Admin:
-        pass
-
-class PhotoAddon(models.Model):
-    photo_id = models.IntegerField(null=True, blank=True)
-    hits = models.IntegerField(default=0)
-
-class Comment(models.Model):
-    photo_id = models.IntegerField(null=True, blank=True)
-    comment = models.TextField()
-    author = models.CharField(max_length=60)
-    website = models.CharField(max_length=128, blank=True)
-    submit_date = models.DateTimeField(blank=True)
-    is_openid = models.BooleanField(default=True)
-    public = models.BooleanField(default=True)
-    
-    class Admin:
-        list_display = ('id','public','photo', 'comment', 'submit_date',)
-
+    AddonClass = VideoAddon
+    ExportClass = OriginalVideoExport
 
     class Meta:
-        ordering = ('-submit_date',)
-    
-    def __str__(self):
-        return "%s on photo %s: %s..." % (self.author, self.photo_id,
-                                          self.comment[:100])
+        db_table = u'VideoTable'
 
-    def as_dict(self):
-        return {'comment': self.comment, 'author': self.author,
-                'website': self.website, 'submit_date': self.submit_date}
+    @property
+    def shotwell_video_id(self):
+        return db_id_to_shotwell_video_id(self.id)
 
-    def url(self):
-        return '%s#c%s' % (self.photo().url(), self.id)
+    @property
+    def timestamp(self):
+        return self.time_created
+
+    @property
+    def tags(self):
+        return Tag.objects.using("gallery").filter(photo_id_list__contains=self.shotwell_video_id)
+
+    def url(self, extra=None):
+        if hasattr(self, '_url'):
+            return self._url
+
+        url = '%s/video/%s/' % (G_URL, self.id)
+        if extra:
+            if extra.startswith('/'):
+                extra = extra[1:]
+            url += extra
+        return url
 
     get_absolute_url = url
-
-    def photo(self):
-        return Photo.objects.using("gallery").get(id=self.photo_id)

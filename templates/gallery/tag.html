@@ -1,16 +1,16 @@
-{% extends "gallery/base_tag_photo.html" %}
+{% extends "gallery/base_tag.html" %}
 {% block title %}
 Tag: {{tag_name}}{% endblock %}
 {% block in_body %}
 
-  {% for photo in photos %}
+  {% for media in medias %}
      {% if tag %}
-     <a href="{{ photo.url }}{{ tag.name|slugify }}">
+     <a href="{{ media.url }}{{ tag.name|slugify }}">
      {% else %}
-     <a href="{{ photo.url }}">
+     <a href="{{ media.url }}">
      {% endif %}
-       <img title="{{photo.get_hits}} hits" 
-	    src="{{ photo.get_exported.thumb_url }}"></img>
+       <img title="{{media.get_hits}} hits" 
+	    src="{{ media.get_exported.thumb_url }}"></img>
      </a>
   {% endfor %}  
 

@@ -1,6 +1,6 @@
 from django.conf.urls.defaults import *
 from django.conf import settings
-from gallery.feeds import Photos, Tags, PhotosByTag, Comments
+from gallery.feeds import Photos, Videos, Tags, TagContents, Comments
 
 try:
     import django_openidconsumer
@@ -10,30 +10,31 @@ except ImportError:
 feeds = {
     'comments': Comments,
     'photos': Photos,
+    'videos': Videos,
     'tags': Tags,
-    'tag': PhotosByTag,
+    'tag': TagContents,
 }
 
 urls = [
     (r'^$', 'gallery.views.index'),
     (r'^feeds/(?P<url>.*)/$',
      'django.contrib.syndication.views.feed', {'feed_dict': feeds}),
-    (r'^tag/(?P<tag_name>[\w\+\-]*)/$', 'gallery.views.photos_in_tag'),
+    (r'^tag/(?P<tag_name>[\w\+\-]*)/$', 'gallery.views.medias_in_tag'),
     (r'^tag/(?P<tag_name>[\w\+\-]*)/(?P<page>\d+)/$',
-     'gallery.views.photos_in_tag'),
-    (r'^photo/(?P<photo_id>\d+)/(?P<event_id>\d+)/$',
-     'gallery.views.photos_in_event'),
+     'gallery.views.medias_in_tag'),
+    (r'^event/(?P<media_type>\w+)/(?P<media_id>\d+)/(?P<event_id>\d+)/$',
+     'gallery.views.medias_in_event'),
     (r'^photo/(?P<photo_id>\d+)/(?P<tag_name>[\w\-]*)/$',
-     'gallery.views.photos_in_tag'),
+     'gallery.views.medias_in_tag'),
     (r'^photo/(?P<photo_id>\d+)/$', 'gallery.views.photo'),
+    (r'^video/(?P<video_id>\d+)/(?P<tag_name>[\w\-]*)/$',
+     'gallery.views.medias_in_tag'),
     (r'^date/(?P<year>\d+)/(?P<month>\d+)/(?P<day>\d+)/$',
      'gallery.views.date'),
     (r'^date/(?P<year>\d+)/(?P<month>\d+)/(?P<day>\d+)/(?P<page>\d+)/$',
      'gallery.views.date'),
-    (r'^popular/$', 'gallery.views.popular'),
-    #(r'^popular/(?P<tag_name>[\w\+\-]*)/$', 'gallery.views.popular'),
     (r'^recent/$', 'gallery.views.recent'),
-    (r'^recent/(?P<tag_name>[\w\+\-]*)/$', 'gallery.views.recent'),    
+    (r'^recent/(?P<tag_name>[\w\+\-]*)/$', 'gallery.views.recent'),
     (r'^recent/(?P<tag_name>[\w\+\-]*)/(?P<page>\d+)/$', 'gallery.views.recent'),
     (r'^events/$', 'gallery.views.events'),
     (r'^event/(?P<event_id>\d+)/$', 'gallery.views.event'),

@@ -1,0 +1,17 @@
+{% extends "gallery/base_media.html" %}
+
+{% block title %}Video {{ media.id }}{% endblock %}
+
+{% block in_body %}
+    <div>
+       <div id="video" style="height:300px;">
+	 <video id="preview" width="400" height="300" controls src="{{ exported.normal_url }}"></video>
+	 {% block prev_next %}{{ block.super }}{% endblock %}
+       </div>
+	 <h2>{{ media.description }}</h2>
+
+         {% block media_tags_events %}{{ block.super }}{% endblock %}
+
+         {% block comments %}{{ block.super }}{% endblock %}
+    </div>
+{% endblock %}

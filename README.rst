@@ -40,8 +40,8 @@ How to install this ?
    ::
 
      $ sqlite3 site.db
-     sqlite> # create table gallery_tagaddon gallery_photoaddon and
-               gallery_comment
+     sqlite> # create table gallery_tagaddon gallery_photoaddon
+               gallery_videoaddon and gallery_comment
 
 5. Now you need to bind the gallery's urls to your django site:
 

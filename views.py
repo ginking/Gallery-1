@@ -2,7 +2,8 @@ from django.http import Http404, HttpResponse, HttpResponseRedirect
 from django import forms
 from django.shortcuts import render_to_response, get_object_or_404, \
      get_list_or_404
-from gallery.models import OriginalExport, Photo, Tag, Comment, Event
+from gallery.models import OriginalExport, Photo, Tag, Comment, Event, \
+     OriginalVideoExport, Video
 from gallery import forms as gallery_forms
 from gallery.utils import beautyfull_text, get_page
 from django.template import RequestContext
@@ -28,10 +29,10 @@ aksmet.setAPIKey(settings.GALLERY_SETTINGS['akismet_api_key'],
                  settings.GALLERY_SETTINGS['blog_url'])
 
 def index(request):
-    random = OriginalExport.get_random(8)
+    random = Photo.get_random(8)
     tags = Tag.get_cloud()
     t = settings.GALLERY_SETTINGS['recent_photos_time']
-    recent = OriginalExport.get_random(8, since=(time.time() - t))
+    recent = Photo.get_random(8, since=(time.time() - t))
     recent_tags = Tag.get_recent_tags_cloud()
     params = {'random': random, 'tags': tags,
               'recent': recent, 'recent_tags': recent_tags}
@@ -42,24 +43,20 @@ def index(request):
                               context_instance=RequestContext(request))
 index = cache_page(index, CACHE_TIMEOUT)
 
-def popular(request, tag_name=None):
-    photos = Photo.popular(tag_name)
-    params = {'photos': photos}
-    return render_to_response('gallery/popular.html', params,
-                              context_instance=RequestContext(request))
-popular = cache_page(popular, CACHE_TIMEOUT)
-
 def recent(request, tag_name=None, page=None):
     tag = Tag.with_name(tag_name)
     if not tag:
         photo_set = Photo.recent()
+        video_set = Video.recent()
     else:
         photo_set = tag.get_recent_photos()
+        video_set = tag.get_recent_videos()
 
-    total = len(photo_set)
+    media_set = list(photo_set) + list(video_set)
+    total = len(media_set)
     page, start, end, nb_pages = get_page(page, total)
 
-    photos = photo_set[start:end]
+    medias = media_set[start:end]
     total_pages = range(nb_pages)
 
     slug = '/%s/recent/' % G_URL
@@ -68,7 +65,7 @@ def recent(request, tag_name=None, page=None):
 
     params = {'tag': tag, 'page': page, 'slug': slug, 'tag_name': tag_name,
               'nb_pages': nb_pages, 'total_pages': total_pages,
-              'photos': photos}
+              'medias': medias}
     params.update(DEFAULT_PARAMS)
     return render_to_response('gallery/tag.html', params,
                               context_instance=RequestContext(request))
@@ -79,11 +76,13 @@ def date(request, year, month, day, page=None):
     month = int(month)
     day = int(day)
     photo_set = Photo.for_date(year, month, day)
+    video_set = Video.for_date(year, month, day)
+    media_set = list(photo_set) + list(video_set)
 
-    total = len(photo_set)
+    total = len(media_set)
     page, start, end, nb_pages = get_page(page, total)
 
-    photos = photo_set[start:end]
+    medias = media_set[start:end]
     total_pages = range(nb_pages)
     slug = '%s/date/%s/%s/%s/' % (G_URL, year, month, day)
 
@@ -93,14 +92,13 @@ def date(request, year, month, day, page=None):
               'page': page, 'slug': slug,
               'human_date': human_date,
               'nb_pages': nb_pages, 'total_pages': total_pages,
-              'photos': photos}
+              'medias': medias}
     params.update(DEFAULT_PARAMS)
     return render_to_response('gallery/date.html', params,
                               context_instance=RequestContext(request))
 date = cache_page(date, CACHE_TIMEOUT)
 
 def photo(request, photo_id, in_tag_name=None, in_event_id=None):
-
     reset_cache = False
     CommentForm = gallery_forms.CommentForm
     if request.method == 'POST':
@@ -166,27 +164,71 @@ def photo(request, photo_id, in_tag_name=None, in_event_id=None):
             event = get_object_or_404(Event.objects.using("gallery"), pk=in_event_id)
         else:
             kw = {}
-        previous = p.get_sibling_photo('previous', **kw)
-        next = p.get_sibling_photo('next', **kw)
+        previous = p.get_sibling_media('previous', **kw)
+        next = p.get_sibling_media('next', **kw)
         p.increment_hit()
         slug = '/%s/photo/%s/' % (G_URL, p.id)
-        params = {'tag': tag, 'photo': p, 'previous': previous,
+        params = {'tag': tag, 'media': p, 'previous': previous,
                   'slug': slug, 'next': next, 'exported': exported,
                   'form': form, 'event': event}
         params.update(DEFAULT_PARAMS)
         context = RequestContext(request)
-        response = render_to_response('gallery/detail.html', params,
+        response = render_to_response('gallery/photo.html', params,
                                       context_instance=context)
         cache.set(cache_key, response, CACHE_TIMEOUT)
     return response
 
-def photos_in_tag(request, tag_name, photo_id=None, page=None):
+def video(request, video_id, in_tag_name=None, in_event_id=None):
+    reset_cache = False
+    CommentForm = gallery_forms.CommentForm
+    form = CommentForm()
+
+    response = None
+    cache_key = 'video_%s' % video_id
+
+    if not reset_cache:
+        response = cache.get(cache_key)
+        if not response:
+            reset_cache = True
+
+    if reset_cache or not response:
+        v = get_object_or_404(Video.objects.using("gallery"), pk=video_id)
+        exported = get_object_or_404(OriginalVideoExport.objects.using("gallery"),
+                                     id=video_id)
+
+        tag = None
+        event = None
+        if in_tag_name:
+            tag = Tag.with_name(in_tag_name)
+            kw = dict(tag=tag)
+        elif in_event_id:
+            kw = dict(event_id=in_event_id)
+            event = get_object_or_404(Event.objects.using("gallery"), pk=in_event_id)
+        else:
+            kw = {}
+        previous = v.get_sibling_media('previous', **kw)
+        next = v.get_sibling_media('next', **kw)
+        v.increment_hit()
+        slug = '/%s/video/%s/' % (G_URL, v.id)
+        params = {'tag': tag, 'media': v, 'previous': previous,
+                  'slug': slug, 'next': next, 'exported': exported,
+                  'form': form, 'event': event}
+        params.update(DEFAULT_PARAMS)
+        context = RequestContext(request)
+        response = render_to_response('gallery/video.html', params,
+                                      context_instance=context)
+        cache.set(cache_key, response, CACHE_TIMEOUT)
+    return response
+
+def medias_in_tag(request, tag_name, photo_id=None, video_id=None, page=None):
     if photo_id:
         return photo(request, photo_id, in_tag_name=tag_name)
+    elif video_id:
+        return video(request, video_id, in_tag_name=tag_name)
     else:
         if tag_name.find('+') > -1:
             # combination of tags
-            photo_set = Tag.build_set(tag_name)
+            media_set = Tag.build_set(tag_name)
             tag = None
         else:
             # display all photos of the tag
@@ -195,24 +237,29 @@ def photos_in_tag(request, tag_name, photo_id=None, page=None):
                 raise Http404
             else:
                 photo_set = tag.photo_set.order_by('timestamp')
+                video_set = tag.video_set.order_by('time_created')
+                media_set = list(photo_set) + list(video_set)
 
-        total = len(photo_set)
+        total = len(media_set)
         page, start, end, nb_pages = get_page(page, total)
 
-        photos = photo_set[start:end]
+        medias = media_set[start:end]
         total_pages = range(nb_pages)
         slug = '%s/tag/%s/' % (G_URL, tag_name)
         params = {'tag': tag, 'page': page, 'slug': slug, 'tag_name': tag_name,
                   'nb_pages': nb_pages, 'total_pages': total_pages,
-                  'photos': photos}
+                  'medias': medias}
         params.update(DEFAULT_PARAMS)
         return render_to_response('gallery/tag.html', params,
                                   context_instance=RequestContext(request))
-photos_in_tag = cache_page(photos_in_tag, CACHE_TIMEOUT)
+medias_in_tag = cache_page(medias_in_tag, CACHE_TIMEOUT)
 
-def photos_in_event(request, photo_id=None, event_id=None):
-    return photo(request, photo_id, in_event_id=event_id)
-photos_in_event = cache_page(photos_in_event, CACHE_TIMEOUT)
+def medias_in_event(request, media_type=None, media_id=None, event_id=None):
+    if media_type == "photo":
+        return photo(request, media_id, in_event_id=event_id)
+    else:
+        return video(request, media_id, in_event_id=event_id)
+medias_in_event = cache_page(medias_in_event, CACHE_TIMEOUT)
 
 def events(request):
     slug = ''

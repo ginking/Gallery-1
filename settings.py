@@ -1,7 +1,7 @@
 
 
 GALLERY_SETTINGS={'items_by_page': 20,
-                  'media_path': '/home/phil/Pictures',
+                  'media_path': '/home/phil/shot',
                   'author': 'Philippe Normand',
                   'copyright': 'Copyright &copy; 2006-2009',
                   'static_path': '/home/phil/devel/gallery/static',

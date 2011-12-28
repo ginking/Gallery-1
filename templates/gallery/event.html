@@ -1,4 +1,4 @@
-{% extends "gallery/base_tag_photo.html" %}
+{% extends "gallery/base_tag.html" %}
 
 {% block in_body %}
 <div style="text-align: center;">
@@ -7,9 +7,15 @@
 <a href="{{ slug }}/?after={{ event.timestamp }}" class="nextlink">newer events</a></p>
 
   {% for photo in event.photo_set.all %}
-     <a href="{{ photo.url }}{{event.id}}">
+     <a href="{{ photo.event_url }}">
        <img title="{{photo.get_hits}} hits" 
 	    src="{{ photo.get_exported.thumb_url }}"></img>
+     </a>
+  {% endfor %}  
+  {% for video in event.video_set.all %}
+     <a href="{{ video.event_url }}">
+       <img title="{{video.get_hits}} hits" 
+	    src="{{ video.get_exported.thumb_url }}"></img>
      </a>
   {% endfor %}  
 

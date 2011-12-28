@@ -216,6 +216,23 @@ img#preview {
    margin-right: 8px;
 }
 
+div#video {
+   /* width: 800px; */
+   display: block;
+   position: relative;
+   clear: both;
+   margin-left: auto;
+   margin-right: auto;
+   /* border: 1px solid black; */
+   min-height: 480px; /* only works in gecko :/ */
+}
+
+video#preview {
+   position: relative;
+   float: left;
+   margin-right: 8px;
+}
+
 div.comment {
    margin: 2em 0px;
    color: #808080;

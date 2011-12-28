@@ -1,0 +1,52 @@
+{% extends "gallery/base_media.html" %}
+
+{% block title %}Photo {{ media.id }}{% endblock %}
+
+{% block in_body %}
+<div>
+       <div id="image" style="height:{{ exported.normal_height }}px;">
+	 <img border=0 id="preview" src="{{ exported.normal_url }}" 
+	      height="{{ exported.normal_height }}px;" width="{{ exported.normal_width }}px"/>
+
+	 {% block prev_next %}{{ block.super }}{% endblock %}
+       </div>
+
+	 <h2>{{ media.description }}</h2>
+
+         {% block media_tags_events %}{{ block.super }}{% endblock %}
+
+	 <div id="exif_table" style="display: none;">
+	   <table class="exif" border="0">
+	   {% for info in media.get_exif_infos %}
+	     <tr><td align="right">{{ info.title }}: </td>
+	         <td><b>{{ info.value }}</b></td></tr>
+	   {% endfor %}
+	   <tr>
+	     <td></td><td><a href="javascript:toggle_div('exif_table');toggle_div('exif_line');">Less info</a></td></tr>
+
+	   </table>
+	 </div>
+
+	 <div class="exif">
+	   {% for info in media.get_exif_infos %}
+	     {% if forloop.counter0|divisibleby:"2" %}
+	       |
+	     {% endif %}
+	     <span title="{{ info.title }}">{{ info.value }}</span>
+	   {% endfor %}
+           | <a href="javascript:toggle_div('exif_table');toggle_div('exif_line');">More info</a>
+	 </div>
+
+	 <div id="mqhq">
+	   {% if exported.mq_url %}
+  	   <a href="{{ exported.mq_url }}">MQ</a>
+	   {% endif %}
+	   {% if exported.hq_url %}
+	   <a href="{{ exported.hq_url }}">HQ</a>
+	   {% endif %}
+	 </div>
+
+         {% block comments %}{{ block.super }}{% endblock %}
+
+    </div>
+{% endblock %}

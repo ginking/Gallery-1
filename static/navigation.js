@@ -15,9 +15,9 @@ function Navigate(key)
 function nav(direction)
 {
    if (direction == -1)
-       url = document.getElementById("previousphoto");
+       url = document.getElementById("previousmedia");
    else
-       url = document.getElementById("nextphoto");
+       url = document.getElementById("nextmedia");
    if (!url)
        url = window.location.href;
    return url;

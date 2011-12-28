@@ -3,7 +3,7 @@
 {% block body %}
   
   <div class="navigation">
-    <a href="/gallery/">Photo Gallery Index</a>
+    <a href="/gallery/">Gallery Index</a>
     
 
     <span>&gt;
@@ -25,8 +25,6 @@
 	: {{ tag.get_description }}
 	{% endif %}
       </a></span>
-      <span>&gt;<a href="{{ tag.popular_url }}"> Popular</a>
-      </span>
 
     {% else %}
 <!--      {% if tag_name %}
@@ -53,7 +51,7 @@
 
     {% if human_date %}
     <span>&gt;
-      Photos taken on {{human_date}}</span>
+      {{human_date}}</span>
     {% endif %}
 
 

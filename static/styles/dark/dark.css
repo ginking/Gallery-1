@@ -299,6 +299,32 @@ img#preview {
 	left: 50%;
 }
 
+div#video {
+   /* width: 800px; */
+   display: block;
+   position: relative;
+   clear: both;
+}
+
+video#preview {
+   position: absolute;
+   top: 0px;
+   right: 0px;
+   bottom: 0px;
+   border: 10px solid #232729; 
+   background-color: #6b6c69;
+   padding: 1px;
+   -moz-border-radius: 7px; 
+   left: 0px;
+   margin-left: auto;
+   margin-right: auto;
+}
+
+* html video#preview { /* should only match on IE; how pathetic */
+   margin-left: -320px;
+   left: 50%;
+}
+
 div.comment {
    margin: 10px 0px 6px 0px;
    color: #babdb6;

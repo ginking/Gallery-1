@@ -4,8 +4,6 @@
   {% for oe in random %}
      <a href="{{ oe.perm_url }}"><img src="{{ oe.thumb_url }}"></img></a>
   {% endfor %}
-     <!-- <p><a style="text-decoration: none"  -->
-     <!--       href="{{ rel_url }}/popular">Popular photos</a></p> -->
      <p><a style="text-decoration: none" 
            href="{{ rel_url }}/events">Events</a></p>
   {% endblock %}
@@ -17,12 +15,6 @@
        href="{{ tag.url }}">{{ tag.name }}</a>
   {% endfor %}
   {% endblock %}
-
-<!--<a style="font-size: 0.800000em; text-decoration: none;" href="/original/index.py/tags/Famille+Noyer">Famille Noyer</a>
-<a style="font-size: 0.800000em; text-decoration: none;" href="/original/index.py/tags/Fred">Fred</a>
-<a style="font-size: 0.800000em; text-decoration: none;" href="/original/index.py/tags/Fun">Fun</a>
-<a style="font-size: 0.800000em; text-decoration: none;" href="/original/index.py/tags/Gen%C3%A8ve">Genève</a>
--->
 
   {% block recent_thumbs_block %}
   {% for oe in recent %}
@@ -37,7 +29,7 @@
 
   {% block recent_tags_cloud %}
      {% if recent_tags %}
-     recent photos in 
+     recent additions in 
      {% for tag in recent_tags %}
      <a style="text-decoration: none" 
 	href="{{ tag.recent_url }}">{{ tag.name }}</a>
