@@ -19,24 +19,6 @@ if G_PORT:
 else:
     SITE_URL = 'http://%s%s' % (SITE, G_URL)
 
-def shotwell_photo_id_to_db_id(weird_id):
-    # thumb00000000000x -> base10 number
-    return int("0x%s" % weird_id[5:], 16)
-
-def db_id_to_shotwell_photo_id(normal_id):
-    # base10 number -> thumb00000000000x
-    hex_id = hex(normal_id)[2:]
-    return 'thumb' + (16 - len(hex_id)) * '0' + hex_id
-
-def shotwell_video_id_to_db_id(weird_id):
-    # video-0000000000000013 -> base10 number
-    return int("0x%s" % weird_id[6:], 16)
-
-def db_id_to_shotwell_video_id(normal_id):
-    # base10 number -> video-0000000000000013
-    hex_id = hex(normal_id)[2:]
-    return 'video-' + (16 - len(hex_id)) * '0' + hex_id
-
 class OriginalExport(models.Model):
     id = models.IntegerField(primary_key=True)
     normal_relpath = models.TextField()
@@ -142,10 +124,6 @@ class Event(models.Model):
 
     class Meta:
         db_table = u'EventTable'
-
-    @property
-    def primary_photo(self):
-        return Photo.objects.using("gallery").get(shotwell_photo_id_to_db_id(self.primary_photo_id))
 
     @property
     def url(self):
@@ -374,12 +352,8 @@ class Photo(models.Model, Media):
                 'tags': [tag.name for tag in self.get_tags()]}
 
     @property
-    def shotwell_photo_id(self):
-        return db_id_to_shotwell_photo_id(self.id)
-
-    @property
     def tags(self):
-        return Tag.objects.using("gallery").filter(photo_id_list__contains=self.shotwell_photo_id)
+        return self.tag_set
 
     def url(self, extra=None):
         if hasattr(self, '_url'):
@@ -426,12 +400,61 @@ class Photo(models.Model, Media):
 
         return infos
 
+class Video(models.Model, Media):
+    id = models.IntegerField(null=True, primary_key=True, blank=True)
+    filename = models.TextField(unique=True)
+    width = models.IntegerField(null=True, blank=True)
+    height = models.IntegerField(null=True, blank=True)
+    clip_duration = models.FloatField(null=True, blank=True)
+    is_interpretable = models.IntegerField(null=True, blank=True)
+    filesize = models.IntegerField(null=True, blank=True)
+    timestamp = models.IntegerField(null=True, blank=True)
+    exposure_time = models.IntegerField(null=True, blank=True)
+    import_id = models.IntegerField(null=True, blank=True)
+    md5 = models.TextField(blank=True)
+    time_created = models.IntegerField(null=True, blank=True)
+    rating = models.IntegerField(null=True, blank=True)
+    title = models.TextField(blank=True)
+    backlinks = models.TextField(blank=True)
+    time_reimported = models.IntegerField(null=True, blank=True)
+    flags = models.IntegerField(null=True, blank=True)
+    event = models.ForeignKey(Event)
+
+    AddonClass = VideoAddon
+    ExportClass = OriginalVideoExport
+
+    class Meta:
+        db_table = u'VideoTable'
+
+    @property
+    def timestamp(self):
+        return self.time_created
+
+    @property
+    def tags(self):
+        return self.tag_set
+
+    def url(self, extra=None):
+        if hasattr(self, '_url'):
+            return self._url
+
+        url = '%s/video/%s/' % (G_URL, self.id)
+        if extra:
+            if extra.startswith('/'):
+                extra = extra[1:]
+            url += extra
+        return url
+
+    get_absolute_url = url
+
 
 class Tag(models.Model):
     id = models.IntegerField(null=True, primary_key=True, blank=True)
     name = models.TextField(unique=True)
     photo_id_list = models.TextField(blank=True)
     time_created = models.IntegerField(null=True, blank=True)
+    photos = models.ManyToManyField(Photo)
+    videos = models.ManyToManyField(Video)
 
     class Meta:
         db_table = u'TagTable'
@@ -454,19 +477,11 @@ class Tag(models.Model):
 
     @property
     def photo_set(self):
-        # example of photo_id_list value: thumb0000000000000011,thumb0000000000000013,
-        real_photo_ids = [ shotwell_photo_id_to_db_id(weird_id)
-                           for weird_id in self.photo_id_list.split(",")
-                           if weird_id.startswith("thumb")]
-        return Photo.objects.using("gallery").filter(id__in=real_photo_ids)
+        return self.photos
 
     @property
     def video_set(self):
-        # example of photo_id_list value: video-0000000000000011,video-0000000000000013,
-        real_video_ids = [ shotwell_video_id_to_db_id(weird_id)
-                           for weird_id in self.photo_id_list.split(",")
-                           if weird_id.startswith("video")]
-        return Video.objects.using("gallery").filter(id__in=real_video_ids)
+        return self.videos
 
     @property
     def human_name(self):
@@ -624,56 +639,6 @@ class Tag(models.Model):
             return []
         return Tag.objects.using("gallery").filter(name__in=self.name)
 
-class Video(models.Model, Media):
-    id = models.IntegerField(null=True, primary_key=True, blank=True)
-    filename = models.TextField(unique=True)
-    width = models.IntegerField(null=True, blank=True)
-    height = models.IntegerField(null=True, blank=True)
-    clip_duration = models.FloatField(null=True, blank=True)
-    is_interpretable = models.IntegerField(null=True, blank=True)
-    filesize = models.IntegerField(null=True, blank=True)
-    timestamp = models.IntegerField(null=True, blank=True)
-    exposure_time = models.IntegerField(null=True, blank=True)
-    import_id = models.IntegerField(null=True, blank=True)
-    md5 = models.TextField(blank=True)
-    time_created = models.IntegerField(null=True, blank=True)
-    rating = models.IntegerField(null=True, blank=True)
-    title = models.TextField(blank=True)
-    backlinks = models.TextField(blank=True)
-    time_reimported = models.IntegerField(null=True, blank=True)
-    flags = models.IntegerField(null=True, blank=True)
-    event = models.ForeignKey(Event)
-
-    AddonClass = VideoAddon
-    ExportClass = OriginalVideoExport
-
-    class Meta:
-        db_table = u'VideoTable'
-
-    @property
-    def shotwell_video_id(self):
-        return db_id_to_shotwell_video_id(self.id)
-
-    @property
-    def timestamp(self):
-        return self.time_created
-
-    @property
-    def tags(self):
-        return Tag.objects.using("gallery").filter(photo_id_list__contains=self.shotwell_video_id)
-
-    def url(self, extra=None):
-        if hasattr(self, '_url'):
-            return self._url
-
-        url = '%s/video/%s/' % (G_URL, self.id)
-        if extra:
-            if extra.startswith('/'):
-                extra = extra[1:]
-            url += extra
-        return url
-
-    get_absolute_url = url
 
 
 class Comment(models.Model):
