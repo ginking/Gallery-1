@@ -440,8 +440,9 @@ def process_video(video_id, tmpdir, remaining):
 
     pipeline.set_state(gst.STATE_PLAYING)
 
-def copy_file(source, destination):
-    shutil.copy2(source, destination)
+def copy_file(source, destination, force=False):
+    if force or not os.path.exists(destination):
+        shutil.copy2(source, destination)
 
 def remove_file(path):
     os.remove(path)
@@ -483,7 +484,7 @@ def rmrf(tmpdir):
 
 def copy_database(tmpdir):
     # first copy to temp dir, then to output_path
-    copy_file(SHOTWELL_DB, tmpdir)
+    copy_file(SHOTWELL_DB, tmpdir, force=True)
 
     db_dir = os.path.join(output_path, "db")
     if not os.path.isdir(db_dir):
@@ -497,7 +498,7 @@ def copy_database(tmpdir):
 
     info("Copying database...")
     db_path = os.path.join(db_dir, "photos.db")
-    copy_file(os.path.join(tmpdir, "photo.db"), db_path)
+    copy_file(os.path.join(tmpdir, "photo.db"), db_path, force=True)
     return db_path
 
 def fixup_database(dbpath):
