@@ -17,7 +17,6 @@ except ImportError:
     from pysqlite2 import dbapi2 as sqlite
 from gtk import gdk
 import gobject
-import gst
 
 SHOTWELL_DB = os.path.expanduser("~/.shotwell/data/photo.db")
 VERSION = 0.1
@@ -366,6 +365,8 @@ def finish(tmpdir):
     loop.quit()
 
 def process_video(video_id, tmpdir, remaining):
+    import gst
+
     cur = cxn.cursor()
     cur.execute('select filename,  from VideoTable where id=%d' % (video_id,))
     relpath, = cur.fetchone()
