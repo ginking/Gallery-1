@@ -554,8 +554,12 @@ def fixup_database(dbpath):
         f = open(filename)
         exif = EXIF.process_file(f)
         f.close()
-        timestamp = time.mktime(time.strptime(str(exif["EXIF DateTimeOriginal"]),
-                                              "%Y:%m:%d %H:%M:%S"))
+        try:
+            timestamp = time.mktime(time.strptime(str(exif["EXIF DateTimeOriginal"]),
+                                                  "%Y:%m:%d %H:%M:%S"))
+        except KeyError:
+            print "Problem with %s." % filename
+            continue
         cur.execute('update PhotoTable set timestamp=%d where id=%d' % (timestamp, photo_id))
     make_sane_many_to_many_relations(connection)
     connection.commit()
