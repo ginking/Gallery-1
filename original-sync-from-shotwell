@@ -18,6 +18,8 @@ except ImportError:
 from gtk import gdk
 import gobject
 
+from db_utils import shotwell_photo_id_to_db_id, shotwell_video_id_to_db_id
+
 SHOTWELL_DB = os.path.expanduser("~/.shotwell/data/photo.db")
 VERSION = 0.1
 jhead_checked = False
@@ -501,6 +503,48 @@ def copy_database(tmpdir):
     copy_file(os.path.join(tmpdir, "photo.db"), db_path, force=True)
     return db_path
 
+def make_sane_many_to_many_relations(connection):
+    info("Fixing tags relations")
+    cur = connection.cursor()
+
+    cur.execute("""CREATE TABLE "TagTable_videos" (
+    "id" integer NOT NULL PRIMARY KEY,
+    "tag_id" integer NOT NULL,
+    "video_id" integer NOT NULL REFERENCES "VideoTable" ("id"),
+    UNIQUE ("tag_id", "video_id")
+    );""")
+    cur.execute("""CREATE TABLE "TagTable_photos" (
+    "id" integer NOT NULL PRIMARY KEY,
+    "tag_id" integer NOT NULL,
+    "photo_id" integer NOT NULL REFERENCES "PhotoTable" ("id"),
+    UNIQUE ("tag_id", "photo_id")
+    );""")
+
+    connection.commit()
+    tv_id = 0
+    tp_id = 0
+    cur.execute("select id,photo_id_list from TagTable")
+    for tag_id, obj_list in cur.fetchall():
+        for obj_id in obj_list.split(","):
+            if not obj_id:
+                continue
+            if obj_id.startswith("thumb"):
+                table = "TagTable_photos"
+                func = shotwell_photo_id_to_db_id
+                tp_id += 1
+                rel_id = tp_id
+                obj_id_name = "photo_id"
+            else:
+                table = "TagTable_videos"
+                func = shotwell_video_id_to_db_id
+                tv_id += 1
+                rel_id = tv_id
+                obj_id_name = "video_id"
+            sql = "insert into %s(id,tag_id,%s) values (%d,%d,%d)" % (table, obj_id_name, rel_id,
+                                                                      tag_id, func(obj_id))
+            cur.execute(sql)
+    connection.commit()
+
 def fixup_database(dbpath):
     info("Fixing up photo timestamps...")
     connection = sqlite.connect(dbpath)
@@ -513,6 +557,7 @@ def fixup_database(dbpath):
         timestamp = time.mktime(time.strptime(str(exif["EXIF DateTimeOriginal"]),
                                               "%Y:%m:%d %H:%M:%S"))
         cur.execute('update PhotoTable set timestamp=%d where id=%d' % (timestamp, photo_id))
+    make_sane_many_to_many_relations(connection)
     connection.commit()
 
 def process_all(args):
