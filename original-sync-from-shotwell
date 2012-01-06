@@ -259,6 +259,16 @@ def autorotate(frompath, topath):
     msg = 'rotating %s to %s' % (frompath, topath)
     jhead(msg, frompath, topath, '-autorot')
 
+def last_version(path):
+    dirname = os.path.dirname(path)
+    basename = os.path.basename(path)
+    if " " in basename:
+        return True
+    basename_id = os.path.splitext(basename)[0] + " "
+    photos = [os.path.join(dirname, p) for p in os.listdir(dirname)
+              if p.startswith(basename_id)]
+    return not photos
+
 def scale_photo(photo_id, tmpdir):
 
     def scale_bounds(bounds, factor):
@@ -301,6 +311,10 @@ def scale_photo(photo_id, tmpdir):
     orig_basename = basename
 
     path = os.path.join(dirname, basename)
+    if not last_version(path):
+        dbg('%s is not last version', path)
+        return []
+
     info('Preparing to scale %s', path)
 
     copied_picture = os.path.join(tmpdir, basename)
