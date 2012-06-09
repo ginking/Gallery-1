@@ -473,7 +473,11 @@ class Tag(models.Model):
 
     @property
     def is_category(self):
-        return len(self.name.split("/")) == 2
+        if not hasattr(self, '_is_category'):
+            has_sub_tags = Tag.objects.using("gallery").filter(name__startswith=self.name).exclude(name=self.name).count() > 0
+            # XXXX
+            self._is_category = has_sub_tags or len(self.name.split("/")) != 1
+        return self._is_category
 
     @property
     def photo_set(self):
