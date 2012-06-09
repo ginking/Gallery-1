@@ -8,3 +8,7 @@ def db_id_to_shotwell_video_id(normal_id):
     # base10 number -> video-0000000000000013
     hex_id = hex(normal_id)[2:]
     return 'video-' + (16 - len(hex_id)) * '0' + hex_id
+
+def shotwell_photo_id_to_db_id(weird_id):
+    # thumb00000000000x -> base10 number
+    return int("0x%s" % weird_id[5:], 16)
