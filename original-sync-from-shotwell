@@ -20,7 +20,7 @@ import gobject
 
 from db_utils import shotwell_photo_id_to_db_id, shotwell_video_id_to_db_id
 
-SHOTWELL_DB = os.path.expanduser("~/.shotwell/data/photo.db")
+SHOTWELL_DB = os.path.expanduser("~/.local/share/shotwell/data/photo.db")
 VERSION = 0.1
 jhead_checked = False
 jhead_available = True
