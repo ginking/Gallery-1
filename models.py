@@ -2,6 +2,8 @@ from django.db import models, connection
 from django.conf import settings
 from django.template.defaultfilters import slugify
 from django.contrib.sites.models import Site
+from django.utils.http import urlquote
+from django.utils.encoding import iri_to_uri
 
 import datetime
 import time
@@ -59,28 +61,30 @@ class OriginalExport(models.Model):
     def get_normal_size(self):
         if not hasattr(self, "_size"):
             media_path = settings.GALLERY_SETTINGS.get('media_path')
-            full_path = open(os.path.join(media_path, self.normal_relpath))
+            full_path = open(os.path.join(media_path, self.normal_relpath.decode('string_escape')))
             i = Image.open(full_path)
             self._size = i.size
         return self._size
 
     def thumb_url(self):
-        return "%s%s" % (self.media_url, self.thumb_relpath)
+        url = "%s%s" % (self.media_url, urlquote(self.thumb_relpath.decode('string_escape')))
+        return iri_to_uri(url)
 
     def normal_url(self):
-        return "%s%s" % (self.media_url, self.normal_relpath)
+        url = "%s%s" % (self.media_url, urlquote(self.normal_relpath.decode('string_escape')))
+        return iri_to_uri(url)
 
     def hq_url(self):
         url = ""
         if self.hq_relpath:
-            url = "%s%s" % (self.media_url, self.hq_relpath)
-        return url
+            url = "%s%s" % (self.media_url, urlquote(self.hq_relpath.decode('string_escape')))
+        return iri_to_uri(url)
 
     def mq_url(self):
         url = ""
         if self.mq_relpath:
-            url = "%s%s" % (self.media_url, self.mq_relpath)
-        return url
+            url = "%s%s" % (self.media_url, urlquote(self.mq_relpath.decode('string_escape')))
+        return iri_to_uri(url)
 
 
 class OriginalVideoExport(models.Model):
@@ -376,7 +380,7 @@ class Photo(models.Model, Media):
         if not hasattr(self, "_exif"):
             media_path = settings.GALLERY_SETTINGS.get('media_path')
             ex = self.get_exported()
-            f = open(os.path.join(media_path, ex.normal_relpath))
+            f = open(os.path.join(media_path, ex.normal_relpath.decode('string_escape')))
             self._exif = EXIF.process_file(f)
             f.close()
         return self._exif
