@@ -116,7 +116,7 @@ class OriginalVideoExport(models.Model):
     get_absolute_url = perm_url
 
 class Event(models.Model):
-    id = models.IntegerField(null=True, primary_key=True, blank=True)
+    id = models.IntegerField(primary_key=True, blank=True)
     name = models.TextField(blank=True)
     primary_photo_id = models.IntegerField(null=True, blank=True)
     time_created = models.IntegerField(null=True, blank=True)
@@ -300,7 +300,7 @@ class Media(object):
         return comments
 
 class Photo(models.Model, Media):
-    id = models.IntegerField(null=True, primary_key=True, blank=True)
+    id = models.IntegerField(primary_key=True, blank=True)
     filename = models.TextField(unique=True)
     width = models.IntegerField(null=True, blank=True)
     height = models.IntegerField(null=True, blank=True)
@@ -401,7 +401,7 @@ class Photo(models.Model, Media):
         return infos
 
 class Video(models.Model, Media):
-    id = models.IntegerField(null=True, primary_key=True, blank=True)
+    id = models.IntegerField(primary_key=True, blank=True)
     filename = models.TextField(unique=True)
     width = models.IntegerField(null=True, blank=True)
     height = models.IntegerField(null=True, blank=True)
@@ -449,7 +449,7 @@ class Video(models.Model, Media):
 
 
 class Tag(models.Model):
-    id = models.IntegerField(null=True, primary_key=True, blank=True)
+    id = models.IntegerField(primary_key=True, blank=True)
     name = models.TextField(unique=True)
     photo_id_list = models.TextField(blank=True)
     time_created = models.IntegerField(null=True, blank=True)
